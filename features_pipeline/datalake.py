@@ -1,6 +1,9 @@
 """Abstractions for interacting with the MongoDB datalake."""
 import logging
 import pymongo
+from pymongo import MongoClient
+
+from features_pipeline.error import DatalakeError
 
 DEFAULT_EMBEDDING_MODEL = 'all-MiniLM-L6-v2'
 
@@ -11,15 +14,6 @@ COLLECTION_NAME_PREFIX = 'chase-data-'
 
 logging.basicConfig(level='DEBUG')
 _LOGGER = logging.getLogger(__name__)
-
-# def configure_datalake(config: dict) -> 'Datalake':
-#     """Configure and return a new datalake instance."""
-#     return Datalake(
-#         host=config['MONGO_DB_HOST'],
-#         port=config['MONGO_DB_PORT'],
-#         username=config['MONGO_DB_USERNAME'],
-#         password=config['MONGO_DB_PASSWORD']
-#     )
 
 class Datalake:
     def __init__(
@@ -35,15 +29,18 @@ class Datalake:
         _mongo_uri = f'mongodb://{host}:{port}'
         self._datalake_name = datalake_name
         self._collection_name_prefix = COLLECTION_NAME_PREFIX
-        self._client = pymongo.MongoClient(
+        # Setup through ctx manager
+        with MongoClient(
             _mongo_uri,
             username=username,
             password=password,
-            connectTimeoutMS=(connection_timeout_seconds*1000)
-        )
+            connectTimeoutMS=(connection_timeout_seconds*10000)
+        ) as pymongo_client:
+            self._client = pymongo_client
 
         # Fetch the DB we need.
         self._db = self._client[self._datalake_name]
+
 
     def find(self, criteria: dict, collection: str):
         """Return a cursor to iterate through the collection for the criteria."""
@@ -63,7 +60,10 @@ class Datalake:
         :param end_prefix: ISO end for collection prefix.
         :return: List of collection names.
         """
-        all_collection_names: list = self._db.list_collection_names()
+        try:
+            all_collection_names: list = self._db.list_collection_names()
+        except Exception as e:
+            raise DatalakeError(message='Failed to list collection names', cause=e) from e
         _LOGGER.debug(f'Found {len(all_collection_names)} collections')
 
         _LOGGER.info(f'Filtering out all collections with the prefix {self._collection_name_prefix}')
@@ -75,8 +75,3 @@ class Datalake:
                 all_collection_names
             )
         )
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        _LOGGER.debug('Closing Mongo Client')
-        self._client.close()
-
