@@ -2,7 +2,7 @@
 import pymongo
 
 from features_pipeline.error import RAGError
-from features_pipeline.vectorstore.partition import load_and_partition_mongo_transactions
+from features_pipeline.rag.vectorstore import load_and_partition_mongo_transactions
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_huggingface import HuggingFaceEmbeddings
 

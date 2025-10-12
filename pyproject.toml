@@ -20,7 +20,10 @@ langchain-mongodb = "^0.7.0"
 langchain-huggingface = "^0.3.1"
 chromadb = "^1.1.0"
 langchain-chroma = "^0.2.6"
-
+langchain-openai = "^0.3.35"
+langchain-core = "^0.3.79"
+# Secrets manager
+hvac = "2.3.0"
 
 [tool.poetry.group.test.dependencies]
 black = "25.1.0"

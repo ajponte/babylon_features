@@ -1,8 +1,9 @@
 """Chroma DB vector store wrapper."""
 from typing import Any
-from langchain_chroma import Chroma
 
-from features_pipeline.vectorstore import VectorStore
+from langchain_core.documents import Document
+
+from features_pipeline.rag.vectorstore import VectorStore
 
 
 class ChromaVectorStore(VectorStore):
@@ -10,6 +11,9 @@ class ChromaVectorStore(VectorStore):
         import chromadb
         self.client = chromadb.Client()
         self.collection = self.client.get_or_create_collection(name=collection_name)
+
+    def add_documents(self, documents: list[Document]):
+        self.collection.add_documents(documents)
 
     def add_vector(self, vector_id: str, vector: list[float], metadata: dict[str, Any] = None):
         self.collection.add(ids=[vector_id], embeddings=[vector], metadatas=[metadata or {}])

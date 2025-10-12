@@ -13,12 +13,19 @@ from features_pipeline.config.confload import (
 )
 
 
+DEFAULT_CONNECTION_TIMEOUT_SECONDS = "30"
+
 CONFIG_LOADERS: list[Loader] = [
     # These are optional for now. Later decide which should be required.
     required(key="BAO_ADDR"),
     required(key="OPENBAO_SECRETS_PATH"),
     # required(key="SQLALCHEMY_DATABASE_URL"),
     required(key="MONGO_DATA_LAKE_NAME"),
+    optional(
+        key='MONGO_CONNECTION_TIMEOUT_SECONDS',
+        default_val=DEFAULT_CONNECTION_TIMEOUT_SECONDS,
+        converter=to_int
+    ),
     optional(key="LOG_TYPE", default_val="stdout"),
     optional(key="LOG_LEVEL", default_val="DEBUG"),
 ]

@@ -1,10 +1,7 @@
 """Vector Store factory creational pattern."""
-from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any
 
-from features_pipeline.vectorstore import VectorStore, VectorStoreType
-from features_pipeline.vectorstore.chroma import ChromaVectorStore
+from features_pipeline.rag.vectorstore import VectorStore, VectorStoreType
+from features_pipeline.rag.vectorstore.chroma import ChromaVectorStore
 
 
 class VectorStoreFactory:

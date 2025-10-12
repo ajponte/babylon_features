@@ -2,26 +2,35 @@
 import logging
 import pymongo
 
-from features_pipeline.document_manager import BabylonDocumentManager
-
 DEFAULT_EMBEDDING_MODEL = 'all-MiniLM-L6-v2'
 
 DATALAKE = 'babylonDataLake'
 
 COLLECTION_NAME_PREFIX = 'chase-data-'
 
+
 logging.basicConfig(level='DEBUG')
 _LOGGER = logging.getLogger(__name__)
 
+# def configure_datalake(config: dict) -> 'Datalake':
+#     """Configure and return a new datalake instance."""
+#     return Datalake(
+#         host=config['MONGO_DB_HOST'],
+#         port=config['MONGO_DB_PORT'],
+#         username=config['MONGO_DB_USERNAME'],
+#         password=config['MONGO_DB_PASSWORD']
+#     )
 
 class Datalake:
     def __init__(
         self,
+        *,
         host: str,
         port: str,
         username: str,
         password: str,
-        datalake_name: str = DATALAKE
+        datalake_name: str = DATALAKE,
+        connection_timeout_seconds: int
     ):
         _mongo_uri = f'mongodb://{host}:{port}'
         self._datalake_name = datalake_name
@@ -29,35 +38,20 @@ class Datalake:
         self._client = pymongo.MongoClient(
             _mongo_uri,
             username=username,
-            password=password
+            password=password,
+            connectTimeoutMS=(connection_timeout_seconds*1000)
         )
 
         # Fetch the DB we need.
         self._db = self._client[self._datalake_name]
 
+    def find(self, criteria: dict, collection: str):
+        """Return a cursor to iterate through the collection for the criteria."""
+        # todo: checks, etc
+        cursor = self._db[collection].find(criteria)
+        return cursor
 
-    def _build_documents(self, collection: str) -> list:
-        """
-        Build a list of documents from a collection.
-
-        :param collection: The target collection.
-        :return: The documents.
-        """
-        _LOGGER.debug(f'Fetching documnets from collection {collection}')
-        documents = collection.find({})
-        parsed_docs = []
-        for doc in documents:
-            doc_id = doc.pop('_id', None)
-            _LOGGER.debug(f'Looking at document with ID: {doc_id}')
-            langchain_doc = BabylonDocumentManager(
-                collection=collection,
-                datalake_document=doc
-            ).build_langchain_document()
-
-            parsed_docs.append(langchain_doc)
-        return parsed_docs
-
-    def _list_collections(
+    def list_collections(
         self,
         start_prefix: str | None = None,
         end_prefix: str | None = None
