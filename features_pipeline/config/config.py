@@ -11,7 +11,7 @@ from features_pipeline.config.confload import (
     to_int,
     to_bool,
 )
-
+from features_pipeline.config.hashicorp import SecretsManagerException
 
 DEFAULT_CONNECTION_TIMEOUT_SECONDS = "30"
 
@@ -33,7 +33,7 @@ CONFIG_LOADERS: list[Loader] = [
 SECRETS_LOADERS: list[Loader] = [
     required_secret(key="MONGO_DB_HOST", path="test"),
     required_secret(key="MONGO_DB_PORT", path="test"),
-    required_secret(key="MONGO_DB_USERNAME", path="test"),
+    required_secret(key="MONGO_DB_USER", path="test"),
     required_secret(key="MONGO_DB_PASSWORD", path="test"),
 ]
 
@@ -53,4 +53,7 @@ def update_config_from_secrets(config: dict[str, Any]) -> None:
 
     :param config: The config dict to update.
     """
-    config.update(dict(loader() for loader in SECRETS_LOADERS))
+    try:
+        config.update(dict(loader() for loader in SECRETS_LOADERS))
+    except Exception as e:
+        raise SecretsManagerException(message='Error loading secrets', cause=e) from e

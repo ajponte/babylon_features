@@ -4,7 +4,6 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from datetime import tzinfo
 
 from typing import Any
 
@@ -15,8 +14,6 @@ from langchain_openai import OpenAIEmbeddings
 from features_pipeline.datalake import Datalake
 from features_pipeline.error import RAGError
 from features_pipeline.rag.documents.documents_collection import DocumentsCollection
-from features_pipeline.rag.vectorstore.chroma import ChromaVectorStore
-from features_pipeline.timeout import timeout_decorator
 from features_pipeline.utils import create_random_uuid_hex
 
 logging.basicConfig(level='DEBUG')
@@ -127,7 +124,7 @@ class BabylonDocumentsManager(DocumentsManager):
             return Datalake(
                 host=config['MONGO_DB_HOST'],
                 port=config['MONGO_DB_PORT'],
-                username=config['MONGO_DB_USERNAME'],
+                username=config['MONGO_DB_USER'],
                 password=config['MONGO_DB_PASSWORD'],
                 connection_timeout_seconds=config['MONGO_CONNECTION_TIMEOUT_SECONDS']
             )
@@ -145,7 +142,6 @@ class BabylonDocumentsManager(DocumentsManager):
         """Build Documents from the mongo data lake collections."""
         self._build_collection_documents()
 
-    @timeout_decorator(attribute_name='_timeout_seconds')
     def _build_collection_documents(self) -> None:
         """
         Build a list of RAG documents from a mongo datalake collection.
