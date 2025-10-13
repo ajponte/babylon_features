@@ -13,8 +13,7 @@ from langchain_openai import OpenAIEmbeddings
 
 from features_pipeline.datalake import Datalake
 from features_pipeline.error import RAGError
-from features_pipeline.rag.documents.documents_collection import DocumentsCollection
-from features_pipeline.utils import create_random_uuid_hex
+from features_pipeline.rag.documents.document_builder import build_langchain_document
 
 logging.basicConfig(level='DEBUG')
 
@@ -54,12 +53,12 @@ class RagCollection:
         else:
             self.documents.append(other)
 
-    def vectorize(self) -> None:
+    def vectorize(self, model: str) -> None:
         """
         Vectorize and persist the documents in the vectorStore.
         """
         collection_name = 'test-collection'
-        embeddings = OpenAIEmbeddings()
+        embeddings = OpenAIEmbeddings(model=model)
         # Initialize Chroma, specifying a collection name and persistence directory if needed
         vector_store = Chroma(
             # Todo: move to constants
@@ -99,6 +98,9 @@ class BabylonDocumentsManager(DocumentsManager):
     _instance: Datalake | None = None
 
     _collection: str | None = None
+
+    # The model to use for embeddings.
+    _model: str | None = None
 
 
     # pylint: disable=unused-argument
@@ -199,46 +201,17 @@ class BabylonDocumentsManager(DocumentsManager):
         :param datalake_collection: Collection name.
         :return: List of `langchain` ADT `Document`. Todo: Generalize `Document`.
         """
+        documents = []
         _LOGGER.debug(f'Fetching documents from collection {datalake_collection}')
-        langchain_collection = DocumentsCollection(
-            # todo: Move this fetch to Collection instantiation.
-            records=self.datalake_client.find({}, collection=datalake_collection)
-        )
-        return list(langchain_collection)
+        db_cursor = self.datalake_client.find({}, collection=datalake_collection)
+        for datalake_record in db_cursor:
+            _LOGGER.debug(f'Looking at mongo record for cursor: {db_cursor}')
+            documents.append(build_langchain_document(
+                source=datalake_record,
+                collection=datalake_collection
+            ))
+        return documents
 
-
-    def build_langchain_document(self, source) -> Document:
-        """
-        Build and return a langchain document.
-
-        :return: The document.
-        """
-        try:
-            return Document(
-                page_content=self.build_document_content(source),
-                metadata=self.build_document_metadata(source),
-                id=create_random_uuid_hex()
-            )
-        except Exception as e:
-            message = f'Error building langchain doc. Err: {e}'
-            raise RAGError(message=message, cause=e) from e
-
-    def build_document_content(self) -> str:
-        """
-        Convert transaction data into a concise, readable text chunk.
-        The structure of the text content is crucial for RAG performance.
-
-        :return: Formatted content for RAG.
-        """
-        _LOGGER.info(f'Building RAG document for collection {self._collection}')
-        content = (
-            f"On {self._datalake_document.get('PostingDate', 'N/A')}, a transaction occurred with details: "
-            f"Description: {self._datalake_document.get('Description', 'N/A')}. "
-            f"Amount: ${self._datalake_document.get('Amount', 0.0):.2f}. "
-            f"Type: {self._datalake_document.get('Type', 'N/A')}."
-        )
-
-        return content
 
     def build_document_metadata(self, source: dict) -> dict[str, str]:
         """

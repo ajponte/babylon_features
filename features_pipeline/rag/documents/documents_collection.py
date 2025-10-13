@@ -4,10 +4,12 @@ https://refactoring.guru/design-patterns/iterator/python/example#example-0
 """
 import logging
 from collections.abc import Iterator, Iterable
+from dataclasses import dataclass
 from typing import Any
 
 from langchain_core.documents import Document
 
+from features_pipeline.datalake import Datalake
 from features_pipeline.error import DocumentsCollectionError
 from features_pipeline.utils import create_random_uuid_hex
 
@@ -15,14 +17,23 @@ logging.basicConfig(level='DEBUG')
 
 _LOGGER = logging.getLogger(__name__)
 
+@dataclass(frozen=True)
+class ProcessedRecordMetaData:
+    """Represents a processed langchain document metadata."""
+    metadata: dict[str, str]
+
 class DocumentsCollection(Iterable):
-    def __init__(self, records: list | None = None, collection_id: str | None = None):
-        self._records = records or []
+    def __init__(
+        self, db_cursor
+    ):
+        self._records: list[ProcessedRecordMetaData] = []
         # Assign a random UUID if the collection is unnamed.
         self._collection_id = None or create_random_uuid_hex()
+        self._db_cursor = db_cursor
 
     def __getitem__(self, index: int) -> Any:
-        return self._records[index]
+        """Return the metadata record previously processed."""
+        return self._db_cursor
 
     def __iter__(self) -> 'DocumentsIter':
         """
@@ -32,6 +43,10 @@ class DocumentsCollection(Iterable):
 
     def add_record(self, record: Any) -> None:
         self._records.append(record)
+
+    def is_empty(self) -> bool:
+        """Return True only if there are no more mongo records to process."""
+        return self._db_cursor.count() == 0
 
     @property
     def id(self) -> str:
@@ -81,7 +96,7 @@ class DocumentsIter(Iterator):
 
     def __init__(self, collection: DocumentsCollection) -> None:
         self._collection = collection
-        self._collection_id = collection.collection_id or create_random_uuid_hex()
+        self._collection_id = collection.id
         self._position = 0
 
     def __next__(self) -> Document:
@@ -89,8 +104,8 @@ class DocumentsIter(Iterator):
         The __next__() method must return the next item in the sequence. On
         reaching the end, and in subsequent calls, it must raise StopIteration.
         """
-        if self._position >= self._collection.size:
-            raise StopIteration()
+        if self._collection.is_empty():
+            raise StopIteration("No more records to process")
         source_data = self._collection[self._position]
         self._position += 1
         doc = self.build_langchain_document(source_data)
