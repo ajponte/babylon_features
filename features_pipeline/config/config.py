@@ -28,6 +28,10 @@ CONFIG_LOADERS: list[Loader] = [
     ),
     optional(key="LOG_TYPE", default_val="stdout"),
     optional(key="LOG_LEVEL", default_val="DEBUG"),
+    # Default embedding model for local runs. Should be overridden
+    # on a system with greater resources.
+    # See https://huggingface.co/BAAI/bge-small-en-v1.5
+    optional(key='EMBEDDING_MODEL', default_val='BAAI/bge-small-en-v1.5')
 ]
 
 SECRETS_LOADERS: list[Loader] = [

@@ -9,6 +9,7 @@ from typing import Any
 
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
 from features_pipeline.datalake import Datalake
@@ -28,7 +29,7 @@ DEFAULT_DOC_PROCESSING_TIMEOUT_SECONDS = 180
 
 # The max number of RAG documents to store in memory
 # for any given python process.
-PROCESS_MAX_RAG_DOCUMENTS = 100
+PROCESS_MAX_RAG_DOCUMENTS = 500
 
 @dataclass
 class RagCollection:
@@ -41,6 +42,14 @@ class RagCollection:
     _max_size = PROCESS_MAX_RAG_DOCUMENTS
     _start_ts: float
 
+    def add_documents(self, documents: list[Document]):
+        self._check_max_size()
+        self.documents.extend(documents)
+
+    def _check_max_size(self) -> None:
+        if len(self.documents) >= PROCESS_MAX_RAG_DOCUMENTS:
+            raise ValueError(f'`PROCESS_MAX_RAG_DOCUMENTS` limit reached of {PROCESS_MAX_RAG_DOCUMENTS}')
+
     def __add__(self, other):
         """
         Add a new langchain `Document` to the list in an instantiated `RAGCollection`.
@@ -48,26 +57,36 @@ class RagCollection:
         :param other: langchain `Document` to add.
         :return:
         """
-        if len(other) > PROCESS_MAX_RAG_DOCUMENTS:
-            raise ValueError(f'`PROCESS_MAX_RAG_DOCUMENTS` limit reached')
-        else:
-            self.documents.append(other)
+        self._check_max_size()
+        self.documents.append(other)
+        return self
 
-    def vectorize(self, model: str) -> None:
+    def clear_documents(self) -> None:
+        self.documents = []
+
+    def vectorize(self, model: str, persist_directory:str| None = './chromadb') -> None:
         """
         Vectorize and persist the documents in the vectorStore.
         """
         collection_name = 'test-collection'
-        embeddings = OpenAIEmbeddings(model=model)
+        embeddings = HuggingFaceEmbeddings(
+            model=model,
+            model_kwargs={'device': 'cpu'}, # Use 'cuda' or 'mps' for GPU if available
+            encode_kwargs={'normalize_embeddings': True}
+        )
         # Initialize Chroma, specifying a collection name and persistence directory if needed
         vector_store = Chroma(
             # Todo: move to constants
             collection_name="my_document_collection",
             embedding_function=embeddings,
-            persist_directory="./chroma_db"  # Optional: for persistent storage
+            persist_directory=persist_directory  # Optional: for persistent storage
         )
 
+        if not self.documents:
+            _LOGGER.warning(f'Warning: No documents found in RAGCollection for PID: {self.pid}. Skipping vectorization.')
+            return
         _LOGGER.debug(f'Vectoring documents for `RAGCollection`. PID: {self.pid}')
+
         vector_store.add_documents(documents=self.documents)
 
         _LOGGER.debug(f'Finished vectoring documents for `RAGCollection`. PID: {self.pid}')
@@ -118,6 +137,8 @@ class BabylonDocumentsManager(DocumentsManager):
 
         else:
             _LOGGER.info("Instance already exists. Returning cached.")
+        # Set the model
+        cls._model = config['EMBEDDING_MODEL']
         return cls._instance
 
     @classmethod
@@ -142,7 +163,10 @@ class BabylonDocumentsManager(DocumentsManager):
 
     def build_documents(self) -> None:
         """Build Documents from the mongo data lake collections."""
-        self._build_collection_documents()
+        try:
+            self._build_collection_documents()
+        except Exception as e:
+            raise RAGError(message='Error building vectorized documents', cause=e) from e
 
     def _build_collection_documents(self) -> None:
         """
@@ -158,10 +182,10 @@ class BabylonDocumentsManager(DocumentsManager):
         rag_collection = self.__build_rag_collection()
         for datalake_collection in collections:
             _LOGGER.info(f'Adding new RAG document to RagCollection {rag_collection.pid}')
-            rag_collection.__add__(self.build_documents_for_collection(datalake_collection))
-
+            rag_collection.add_documents(self.build_documents_for_collection(datalake_collection))
+        _LOGGER.debug('Finished looping through all collections')
         _LOGGER.info('Persisting vectorized documents to the vector store')
-        rag_collection.vectorize()
+        rag_collection.vectorize(model=self._model)
 
     def __build_rag_collection(self) -> RagCollection:
         """
@@ -210,6 +234,8 @@ class BabylonDocumentsManager(DocumentsManager):
                 source=datalake_record,
                 collection=datalake_collection
             ))
+        _LOGGER.info('Closing open DB Cursor')
+        db_cursor.close()
         return documents
 
 
