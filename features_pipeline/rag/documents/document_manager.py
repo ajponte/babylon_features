@@ -1,4 +1,5 @@
 """Service object for building a vectorized document."""
+
 import os
 import logging
 from abc import ABC, abstractmethod
@@ -15,7 +16,7 @@ from features_pipeline.datalake import Datalake
 from features_pipeline.error import RAGError
 from features_pipeline.rag.documents.document_builder import build_langchain_document
 
-logging.basicConfig(level='DEBUG')
+logging.basicConfig(level="DEBUG")
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,14 +31,16 @@ DEFAULT_DOC_PROCESSING_TIMEOUT_SECONDS = 180
 # for any given python process.
 PROCESS_MAX_RAG_DOCUMENTS = 500
 
+
 @dataclass
 class RagCollection:
     """
     Encapsulates RAG documents for a set of collections.
     """
+
     # Python process ID.
     pid: int
-    documents:list[Document]
+    documents: list[Document]
     _max_size = PROCESS_MAX_RAG_DOCUMENTS
     _start_ts: float
 
@@ -55,7 +58,7 @@ class RagCollection:
         """
         if len(self.documents) + num_added >= PROCESS_MAX_RAG_DOCUMENTS:
             raise ValueError(
-                f'`PROCESS_MAX_RAG_DOCUMENTS` limit reached of {PROCESS_MAX_RAG_DOCUMENTS}'
+                f"`PROCESS_MAX_RAG_DOCUMENTS` limit reached of {PROCESS_MAX_RAG_DOCUMENTS}"
             )
 
     def __add__(self, other):
@@ -73,40 +76,44 @@ class RagCollection:
         """Remove all documents from the internal collection."""
         self.documents = []
 
-    def vectorize(self, model: str, persist_directory:str| None = './chromadb') -> None:
+    def vectorize(
+        self, model: str, persist_directory: str | None = "./chromadb"
+    ) -> None:
         """
         Vectorize and persist the documents in the vectorStore.
         """
         embeddings = HuggingFaceEmbeddings(
             model=model,
-            model_kwargs={'device': 'cpu'}, # Use 'cuda' or 'mps' for GPU if available
-            encode_kwargs={'normalize_embeddings': True}
+            model_kwargs={"device": "cpu"},  # Use 'cuda' or 'mps' for GPU if available
+            encode_kwargs={"normalize_embeddings": True},
         )
         # Initialize Chroma, specifying a collection name and persistence directory if needed
         vector_store = Chroma(
             # Todo: move to constants
             collection_name="my_document_collection",
             embedding_function=embeddings,
-            persist_directory=persist_directory  # Optional: for persistent storage
+            persist_directory=persist_directory,  # Optional: for persistent storage
         )
 
         if not self.documents:
             _LOGGER.warning(
-                f'Warning: No documents found in RAGCollection for PID: {self.pid} '
-                'Skipping vectorization.'
+                f"Warning: No documents found in RAGCollection for PID: {self.pid} "
+                "Skipping vectorization."
             )
             return
-        _LOGGER.debug(f'Vectoring documents for `RAGCollection`. PID: {self.pid}')
+        _LOGGER.debug(f"Vectoring documents for `RAGCollection`. PID: {self.pid}")
 
         vector_store.add_documents(documents=self.documents)
 
-        _LOGGER.debug(f'Finished vectoring documents for `RAGCollection`. PID: {self.pid}')
-
+        _LOGGER.debug(
+            f"Finished vectoring documents for `RAGCollection`. PID: {self.pid}"
+        )
 
 
 # pylint: disable=too-few-public-methods
 class DocumentsManager(ABC):
     """Abstract parent class for Building and returning parsed documents from the data lake."""
+
     def __init__(self, doc_processing_timeout_seconds: int):
         """
         Constructor.
@@ -123,8 +130,10 @@ class DocumentsManager(ABC):
         Builds and returns parsed documents from the data lake.
         """
 
+
 class BabylonDocumentsManager(DocumentsManager):
     """Documents manager for Babylon-domain RAG documents."""
+
     _timeout_seconds: int = DEFAULT_DOC_PROCESSING_TIMEOUT_SECONDS
 
     _instance: Datalake | None = None
@@ -133,7 +142,6 @@ class BabylonDocumentsManager(DocumentsManager):
 
     # The model to use for embeddings.
     _model: str | None = None
-
 
     # pylint: disable=unused-argument
     def __new__(cls, config: dict[str, Any]):
@@ -144,31 +152,30 @@ class BabylonDocumentsManager(DocumentsManager):
             try:
                 cls._instance.datalake_client = cls.__configure_datalake(config)
             except Exception as e:
-                message = 'Unexpected exception while instantiating MongoDB client.'
+                message = "Unexpected exception while instantiating MongoDB client."
                 _LOGGER.exception(message, exc_info=e)
                 raise RAGError(message=message, cause=e) from e
 
         else:
             _LOGGER.info("Instance already exists. Returning cached.")
         # Set the model
-        cls._model = config['EMBEDDING_MODEL']
+        cls._model = config["EMBEDDING_MODEL"]
         return cls._instance
 
     @classmethod
     def __configure_datalake(cls, config: dict) -> Datalake:
         try:
             return Datalake(
-                host=config['MONGO_DB_HOST'],
-                port=config['MONGO_DB_PORT'],
-                username=config['MONGO_DB_USER'],
-                password=config['MONGO_DB_PASSWORD'],
-                connection_timeout_seconds=config['MONGO_CONNECTION_TIMEOUT_SECONDS']
+                host=config["MONGO_DB_HOST"],
+                port=config["MONGO_DB_PORT"],
+                username=config["MONGO_DB_USER"],
+                password=config["MONGO_DB_PASSWORD"],
+                connection_timeout_seconds=config["MONGO_CONNECTION_TIMEOUT_SECONDS"],
             )
         except Exception as e:
-            message = 'Unexpected exception while instantiating MongoDB client.'
+            message = "Unexpected exception while instantiating MongoDB client."
             _LOGGER.exception(message, exc_info=e)
             raise RAGError(message=message, cause=e) from e
-
 
     @property
     def data_lake(self) -> Datalake:
@@ -180,7 +187,9 @@ class BabylonDocumentsManager(DocumentsManager):
         try:
             self._build_collection_documents()
         except Exception as e:
-            raise RAGError(message='Error building vectorized documents', cause=e) from e
+            raise RAGError(
+                message="Error building vectorized documents", cause=e
+            ) from e
 
     def _build_collection_documents(self) -> None:
         """
@@ -188,17 +197,21 @@ class BabylonDocumentsManager(DocumentsManager):
 
         :return: The documents. The return type of this method is a `RAGCollection`.
         """
-        _LOGGER.info(f'Fetching documents from collection {self._collection}')
+        _LOGGER.info(f"Fetching documents from collection {self._collection}")
         collections = self.data_lake.list_collections()
 
         # Set PID, start_ts, etc for current rag/python process.
         # rag_documents_collection.set_rag_process()
         rag_collection = self.__build_rag_collection()
         for datalake_collection in collections:
-            _LOGGER.info(f'Adding new RAG document to RagCollection {rag_collection.pid}')
-            rag_collection.add_documents(self.build_documents_for_collection(datalake_collection))
-        _LOGGER.debug('Finished looping through all collections')
-        _LOGGER.info('Persisting vectorized documents to the vector store')
+            _LOGGER.info(
+                f"Adding new RAG document to RagCollection {rag_collection.pid}"
+            )
+            rag_collection.add_documents(
+                self.build_documents_for_collection(datalake_collection)
+            )
+        _LOGGER.debug("Finished looping through all collections")
+        _LOGGER.info("Persisting vectorized documents to the vector store")
         rag_collection.vectorize(model=self._model)
 
     def __build_rag_collection(self) -> RagCollection:
@@ -210,6 +223,7 @@ class BabylonDocumentsManager(DocumentsManager):
 
         :return: A new `RagCollection`.
         """
+
         def set_rag_process(pid: int, start_ts: float, docments: list) -> RagCollection:
             """
             Set the start time and current PID for a RAG process.
@@ -220,21 +234,19 @@ class BabylonDocumentsManager(DocumentsManager):
             """
             if len(docments) > 0:
                 raise ValueError(
-                    f'Documents must be empty to create a new RAGCollection: {len(docments)}'
+                    f"Documents must be empty to create a new RAGCollection: {len(docments)}"
                 )
 
-            _LOGGER.debug(f'Starting RAG process: {pid} at {now}')
+            _LOGGER.debug(f"Starting RAG process: {pid} at {now}")
             return RagCollection(pid=pid, _start_ts=start_ts, documents=docments)
 
         # Create new `RagCollection` for this python process.
         now = datetime.now().astimezone(timezone.utc)
-        return set_rag_process(
-            pid=os.getpid(),
-            start_ts=now.timestamp(),
-            docments=[]
-        )
+        return set_rag_process(pid=os.getpid(), start_ts=now.timestamp(), docments=[])
 
-    def build_documents_for_collection(self, datalake_collection: str) -> list[Document]:
+    def build_documents_for_collection(
+        self, datalake_collection: str
+    ) -> list[Document]:
         """
         Build and return a list langchain documents, which were parsed from a MongoDB collection.
 
@@ -242,18 +254,20 @@ class BabylonDocumentsManager(DocumentsManager):
         :return: List of `langchain` ADT `Document`. Todo: Generalize `Document`.
         """
         documents = []
-        _LOGGER.debug(f'Fetching documents from collection {datalake_collection}')
-        db_cursor = self.datalake_client.find({}, collection=datalake_collection)  # pylint: disable=no-member
+        _LOGGER.debug(f"Fetching documents from collection {datalake_collection}")
+        db_cursor = self.datalake_client.find(
+            {}, collection=datalake_collection
+        )  # pylint: disable=no-member
         for datalake_record in db_cursor:
-            _LOGGER.debug(f'Looking at mongo record for cursor: {db_cursor}')
-            documents.append(build_langchain_document(
-                source=datalake_record,
-                collection=datalake_collection
-            ))
-        _LOGGER.info('Closing open DB Cursor')
+            _LOGGER.debug(f"Looking at mongo record for cursor: {db_cursor}")
+            documents.append(
+                build_langchain_document(
+                    source=datalake_record, collection=datalake_collection
+                )
+            )
+        _LOGGER.info("Closing open DB Cursor")
         db_cursor.close()
         return documents
-
 
     def build_document_metadata(self, source: dict) -> dict[str, str]:
         """
@@ -263,13 +277,13 @@ class BabylonDocumentsManager(DocumentsManager):
         :return: Metadata as a dict.
         """
         # The metadata retains useful filtering info (like the source collection/date)
-        _LOGGER.info(f'Building RAG metadata for collection {self._collection}')
+        _LOGGER.info(f"Building RAG metadata for collection {self._collection}")
         metadata = {
             "source_collection": self._collection,
             "transaction_date": source.get("PostingDate"),
             "amount": source.get("Amount"),
             "type": source.get("Type"),
             # Add all other fields as metadata for advanced filtering
-            **source
+            **source,
         }
         return metadata

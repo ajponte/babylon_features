@@ -20,16 +20,16 @@ CONFIG_LOADERS: list[Loader] = [
     # required(key="SQLALCHEMY_DATABASE_URL"),
     required(key="MONGO_DATA_LAKE_NAME"),
     optional(
-        key='MONGO_CONNECTION_TIMEOUT_SECONDS',
+        key="MONGO_CONNECTION_TIMEOUT_SECONDS",
         default_val=DEFAULT_CONNECTION_TIMEOUT_SECONDS,
-        converter=to_int
+        converter=to_int,
     ),
     optional(key="LOG_TYPE", default_val="stdout"),
     optional(key="LOG_LEVEL", default_val="DEBUG"),
     # Default embedding model for local runs. Should be overridden
     # on a system with greater resources.
     # See https://huggingface.co/BAAI/bge-small-en-v1.5
-    optional(key='EMBEDDING_MODEL', default_val='BAAI/bge-small-en-v1.5')
+    optional(key="EMBEDDING_MODEL", default_val="BAAI/bge-small-en-v1.5"),
 ]
 
 SECRETS_LOADERS: list[Loader] = [
@@ -58,4 +58,4 @@ def update_config_from_secrets(config: dict[str, Any]) -> None:
     try:
         config.update(dict(loader() for loader in SECRETS_LOADERS))
     except Exception as e:
-        raise SecretsManagerException(message='Error loading secrets', cause=e) from e
+        raise SecretsManagerException(message="Error loading secrets", cause=e) from e

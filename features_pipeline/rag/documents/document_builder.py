@@ -1,13 +1,15 @@
 """Methods for building RAG documents."""
+
 import logging
 
 from langchain_core.documents import Document
 
 from features_pipeline.utils import create_random_uuid_hex
 
-logging.basicConfig(level='DEBUG')
+logging.basicConfig(level="DEBUG")
 
 _LOGGER = logging.getLogger(__name__)
+
 
 def build_langchain_document(source, collection: str) -> Document:
     """
@@ -20,7 +22,7 @@ def build_langchain_document(source, collection: str) -> Document:
     # The ID of the source record. We remove this
     # so that it's not part of the new doc content.
     # However, we will add it to metadata.
-    source_id = source.pop('_id', None)
+    source_id = source.pop("_id", None)
     langchain_id = None
     if source_id is not None:
         # Crucial fix: convert the ObjectId (or any non-string ID) to a string
@@ -29,16 +31,14 @@ def build_langchain_document(source, collection: str) -> Document:
         # 3. Handle missing ID (use a random one if source_id was None)
     if not langchain_id:
         langchain_id = create_random_uuid_hex()
-        _LOGGER.info(f'Creating random ID: {langchain_id} for document')
+        _LOGGER.info(f"Creating random ID: {langchain_id} for document")
 
     return Document(
         page_content=build_document_content(source, collection=collection),
         metadata=build_document_metadata(
-            source=source,
-            source_id=str(source_id),
-            collection=collection
+            source=source, source_id=str(source_id), collection=collection
         ),
-        id=langchain_id
+        id=langchain_id,
     )
 
 
@@ -47,7 +47,7 @@ def build_document_content(source: dict, collection: str) -> str:
     Convert transaction data into a concise, readable text chunk.
     (Function content remains as you provided)
     """
-    _LOGGER.info(f'Building RAG document for collection {collection}')
+    _LOGGER.info(f"Building RAG document for collection {collection}")
     content = (
         f"On {source.get('PostingDate', 'N/A')}, a transaction occurred with details: "
         f"Description: {source.get('Description', 'N/A')}. "
@@ -58,9 +58,9 @@ def build_document_content(source: dict, collection: str) -> str:
 
 
 def build_document_metadata(
-        source: dict,
-        collection: str,
-        source_id: str | None = None,
+    source: dict,
+    collection: str,
+    source_id: str | None = None,
 ) -> dict[str, str | float | int | bool]:
     """
     Build metadata for a LangChain document, ensuring all values are simple types.
@@ -70,7 +70,7 @@ def build_document_metadata(
     :param source_id: Id of the source data record (must be a str).
     :return: Metadata as a dict of simple types.
     """
-    _LOGGER.info(f'Building RAG metadata for collection {collection}')
+    _LOGGER.info(f"Building RAG metadata for collection {collection}")
 
     # 1. Start with explicit metadata fields
     metadata = {
@@ -93,7 +93,8 @@ def build_document_metadata(
                 # should fix it.
                 _LOGGER.warning(
                     f"Skipping complex metadata field '{k}' of type {type(v)}."
-                    f"Use filter_complex_metadata for arrays/dicts.")
+                    f"Use filter_complex_metadata for arrays/dicts."
+                )
                 continue  # Skip complex types like arrays/dicts unless you JSON encode them
 
             # Convert any custom non-serializable object (like ObjectId) to string

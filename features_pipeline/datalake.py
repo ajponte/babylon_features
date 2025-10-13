@@ -1,4 +1,5 @@
 """Abstractions for interacting with the MongoDB datalake."""
+
 import logging
 from pymongo import MongoClient
 
@@ -13,6 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class Datalake:
     """Driver for the data lake."""
+
     # pylint: disable=too-many-arguments
     def __init__(
         self,
@@ -55,8 +57,7 @@ class Datalake:
             )
         except Exception as e:
             raise DatalakeError(
-                message="Failed to connect to MongoDB datalake",
-                cause=e
+                message="Failed to connect to MongoDB datalake", cause=e
             ) from e
 
     def __enter__(self):
@@ -84,8 +85,7 @@ class Datalake:
             return cursor
         except Exception as e:
             raise DatalakeError(
-                message=f"Failed to query collection '{collection}'",
-                cause=e
+                message=f"Failed to query collection '{collection}'", cause=e
             ) from e
 
     def list_collections(
@@ -107,12 +107,13 @@ class Datalake:
             all_collection_names: list[str] = self._db.list_collection_names()
         except Exception as e:
             raise DatalakeError(
-                message="Failed to list collection names",
-                cause=e
+                message="Failed to list collection names", cause=e
             ) from e
 
         _LOGGER.debug(f"Found {len(all_collection_names)} total collections.")
-        _LOGGER.info(f"Filtering collections with prefix '{self._collection_name_prefix}'")
+        _LOGGER.info(
+            f"Filtering collections with prefix '{self._collection_name_prefix}'"
+        )
 
         filtered = [
             name

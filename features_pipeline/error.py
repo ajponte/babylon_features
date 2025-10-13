@@ -1,10 +1,12 @@
 """Domain-level errors."""
 
+
 class RAGError(Exception):
     """
     Throw this error when there's an un-handleable issue with vectorizing and retrieving documents
     fom the vector store.
     """
+
     def __init__(self, message: str, cause: Exception | None = None):
         """
         Constructor.
@@ -32,9 +34,11 @@ class RAGError(Exception):
         :return: The exception cause.
         """
         return self._cause
+
 
 class DatalakeError(Exception):
     """Trow this error upon issues with the data lake."""
+
     def __init__(self, message: str, cause: Exception | None = None):
         """
         Constructor.
@@ -62,12 +66,14 @@ class DatalakeError(Exception):
         :return: The exception cause.
         """
         return self._cause
+
 
 class DocumentsCollectionError(BaseException):
     """
     Throw this error when there's an issue operating on
     a collection of documents.
     """
+
     def __init__(self, message: str, cause: Exception | None = None):
         """
         Constructor.
