@@ -10,7 +10,6 @@ from typing import Any
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_openai import OpenAIEmbeddings
 
 from features_pipeline.datalake import Datalake
 from features_pipeline.error import RAGError
@@ -43,12 +42,21 @@ class RagCollection:
     _start_ts: float
 
     def add_documents(self, documents: list[Document]):
-        self._check_max_size()
+        """Add a list of documents to the current collection."""
+        self._check_max_size(len(documents))
         self.documents.extend(documents)
 
-    def _check_max_size(self) -> None:
-        if len(self.documents) >= PROCESS_MAX_RAG_DOCUMENTS:
-            raise ValueError(f'`PROCESS_MAX_RAG_DOCUMENTS` limit reached of {PROCESS_MAX_RAG_DOCUMENTS}')
+    def _check_max_size(self, num_added: int | None = 0) -> None:
+        """
+        Check if the max size limit has been breached.
+
+        :param num_added: The number of new documents to be added.
+        :raise ValueError - If the max limit is reached.
+        """
+        if len(self.documents) + num_added >= PROCESS_MAX_RAG_DOCUMENTS:
+            raise ValueError(
+                f'`PROCESS_MAX_RAG_DOCUMENTS` limit reached of {PROCESS_MAX_RAG_DOCUMENTS}'
+            )
 
     def __add__(self, other):
         """
@@ -57,18 +65,18 @@ class RagCollection:
         :param other: langchain `Document` to add.
         :return:
         """
-        self._check_max_size()
+        self._check_max_size(1)
         self.documents.append(other)
         return self
 
     def clear_documents(self) -> None:
+        """Remove all documents from the internal collection."""
         self.documents = []
 
     def vectorize(self, model: str, persist_directory:str| None = './chromadb') -> None:
         """
         Vectorize and persist the documents in the vectorStore.
         """
-        collection_name = 'test-collection'
         embeddings = HuggingFaceEmbeddings(
             model=model,
             model_kwargs={'device': 'cpu'}, # Use 'cuda' or 'mps' for GPU if available
@@ -83,7 +91,10 @@ class RagCollection:
         )
 
         if not self.documents:
-            _LOGGER.warning(f'Warning: No documents found in RAGCollection for PID: {self.pid}. Skipping vectorization.')
+            _LOGGER.warning(
+                f'Warning: No documents found in RAGCollection for PID: {self.pid} '
+                'Skipping vectorization.'
+            )
             return
         _LOGGER.debug(f'Vectoring documents for `RAGCollection`. PID: {self.pid}')
 
@@ -93,6 +104,7 @@ class RagCollection:
 
 
 
+# pylint: disable=too-few-public-methods
 class DocumentsManager(ABC):
     """Abstract parent class for Building and returning parsed documents from the data lake."""
     def __init__(self, doc_processing_timeout_seconds: int):
@@ -112,6 +124,7 @@ class DocumentsManager(ABC):
         """
 
 class BabylonDocumentsManager(DocumentsManager):
+    """Documents manager for Babylon-domain RAG documents."""
     _timeout_seconds: int = DEFAULT_DOC_PROCESSING_TIMEOUT_SECONDS
 
     _instance: Datalake | None = None
@@ -159,6 +172,7 @@ class BabylonDocumentsManager(DocumentsManager):
 
     @property
     def data_lake(self) -> Datalake:
+        """Return the instance's datalake object."""
         return self._instance.datalake_client
 
     def build_documents(self) -> None:
@@ -205,7 +219,9 @@ class BabylonDocumentsManager(DocumentsManager):
             :param start_ts: PID ts start.
             """
             if len(docments) > 0:
-                raise ValueError(f'Documents must be empty to create a new RAGCollection: {len(docments)}')
+                raise ValueError(
+                    f'Documents must be empty to create a new RAGCollection: {len(docments)}'
+                )
 
             _LOGGER.debug(f'Starting RAG process: {pid} at {now}')
             return RagCollection(pid=pid, _start_ts=start_ts, documents=docments)
@@ -227,7 +243,7 @@ class BabylonDocumentsManager(DocumentsManager):
         """
         documents = []
         _LOGGER.debug(f'Fetching documents from collection {datalake_collection}')
-        db_cursor = self.datalake_client.find({}, collection=datalake_collection)
+        db_cursor = self.datalake_client.find({}, collection=datalake_collection)  # pylint: disable=no-member
         for datalake_record in db_cursor:
             _LOGGER.debug(f'Looking at mongo record for cursor: {db_cursor}')
             documents.append(build_langchain_document(

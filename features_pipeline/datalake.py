@@ -12,6 +12,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class Datalake:
+    """Driver for the data lake."""
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         *,
@@ -22,6 +24,16 @@ class Datalake:
         datalake_name: str = DATALAKE,
         connection_timeout_seconds: int = 10,
     ):
+        """
+        Constructor.
+
+        :param host: MongoDB host.
+        :param port: MongoDB port.
+        :param username: MongoDB username.
+        :param password: MongoDB password.
+        :param datalake_name: Datalake name.
+        :param connection_timeout_seconds: Max timeout seconds.
+        """
         self._mongo_uri = f"mongodb://{host}:{port}"
         self._datalake_name = datalake_name
         self._collection_name_prefix = COLLECTION_NAME_PREFIX
@@ -38,9 +50,14 @@ class Datalake:
             )
             self._client.admin.command("ping")
             self._db = self._client[self._datalake_name]
-            _LOGGER.debug(f"Connected to datalake '{self._datalake_name}' at {self._mongo_uri}")
+            _LOGGER.debug(
+                f"Connected to datalake '{self._datalake_name}' at {self._mongo_uri}"
+            )
         except Exception as e:
-            raise DatalakeError(message="Failed to connect to MongoDB datalake", cause=e) from e
+            raise DatalakeError(
+                message="Failed to connect to MongoDB datalake",
+                cause=e
+            ) from e
 
     def __enter__(self):
         return self
@@ -49,6 +66,7 @@ class Datalake:
         self.close()
 
     def close(self):
+        """Attempt to close the DB client."""
         if self._client is not None:
             try:
                 self._client.close()
@@ -65,7 +83,10 @@ class Datalake:
             cursor = self._db[collection].find(criteria)
             return cursor
         except Exception as e:
-            raise DatalakeError(message=f"Failed to query collection '{collection}'", cause=e) from e
+            raise DatalakeError(
+                message=f"Failed to query collection '{collection}'",
+                cause=e
+            ) from e
 
     def list_collections(
         self,
@@ -85,7 +106,10 @@ class Datalake:
         try:
             all_collection_names: list[str] = self._db.list_collection_names()
         except Exception as e:
-            raise DatalakeError(message="Failed to list collection names", cause=e) from e
+            raise DatalakeError(
+                message="Failed to list collection names",
+                cause=e
+            ) from e
 
         _LOGGER.debug(f"Found {len(all_collection_names)} total collections.")
         _LOGGER.info(f"Filtering collections with prefix '{self._collection_name_prefix}'")

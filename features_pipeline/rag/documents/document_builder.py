@@ -1,3 +1,4 @@
+"""Methods for building RAG documents."""
 import logging
 
 from langchain_core.documents import Document
@@ -87,10 +88,12 @@ def build_document_metadata(
             if isinstance(v, (list, dict)):
                 # If the value is a list or dict, skip it or convert it to a JSON string
                 # Sticking to the error message's accepted types: str, int, float, bool.
-                # For this fix, we'll convert simple non-serializable objects (like ObjectIds) to str.
-                # If the value is another database ID/complex object, converting to str should fix it.
+                # For this fix, we'll convert simple non-serializable objects (like ObjectIds)
+                # to str. If the value is another database ID/complex object, converting to str
+                # should fix it.
                 _LOGGER.warning(
-                    f"Skipping complex metadata field '{k}' of type {type(v)}. Use filter_complex_metadata for arrays/dicts.")
+                    f"Skipping complex metadata field '{k}' of type {type(v)}."
+                    f"Use filter_complex_metadata for arrays/dicts.")
                 continue  # Skip complex types like arrays/dicts unless you JSON encode them
 
             # Convert any custom non-serializable object (like ObjectId) to string

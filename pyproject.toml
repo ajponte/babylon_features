@@ -7,16 +7,11 @@ readme = "README.md"
 #packages = [{ include = "your_package_name" }]  # or remove if not using a package dir
 
 [tool.poetry.dependencies]
-# Old: python = "^3.12.6"  # Interpreted as <4.0.0
-# New: Explicitly set the upper limit to ensure compatibility
-python = ">=3.12.6, <3.13"
+python = "^3.13"
 
 requests = "^2.32.5"
 pymongo = "4.15.1"
-unstructured-ingest = "^1.2.18"
-sentence-transformers = "^5.1.1"
 openai = "^2.0.0"
-langchain-mongodb = "^0.7.0"
 langchain-huggingface = "^0.3.1"
 chromadb = "^1.1.0"
 langchain-chroma = "^0.2.6"

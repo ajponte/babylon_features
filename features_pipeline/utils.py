@@ -1,3 +1,4 @@
+"""Shared utils."""
 import uuid
 
 

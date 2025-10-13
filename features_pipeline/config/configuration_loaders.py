@@ -4,7 +4,7 @@
 import os
 from typing import Any, Callable, Union
 
-from server.config.hashicorp import BaoSecretsManager
+from features_pipeline.config.hashicorp import BaoSecretsManager
 
 # Converts a string key to another type.
 Converter = Callable[[str], Any]

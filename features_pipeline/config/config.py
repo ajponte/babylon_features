@@ -1,4 +1,3 @@
-
 """Application-level configs."""
 
 from typing import Any
@@ -9,7 +8,6 @@ from features_pipeline.config.confload import (
     required_secret,
     optional,
     to_int,
-    to_bool,
 )
 from features_pipeline.config.hashicorp import SecretsManagerException
 
