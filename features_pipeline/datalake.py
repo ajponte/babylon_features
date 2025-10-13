@@ -50,8 +50,8 @@ class Datalake:
                 connectTimeoutMS=connection_timeout_seconds * 1000,
                 serverSelectionTimeoutMS=connection_timeout_seconds * 1000,
             )
-            self._client.admin.command("ping")
-            self._db = self._client[self._datalake_name]
+            self._client.admin.command("ping")  # type: ignore
+            self._db = self._client[self._datalake_name]  # type: ignore
             _LOGGER.debug(
                 f"Connected to datalake '{self._datalake_name}' at {self._mongo_uri}"
             )

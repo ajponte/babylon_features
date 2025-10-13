@@ -49,13 +49,15 @@ class RagCollection:
         self._check_max_size(len(documents))
         self.documents.extend(documents)
 
-    def _check_max_size(self, num_added: int | None = 0) -> None:
+    def _check_max_size(self, num_added: int=0) -> None:
         """
         Check if the max size limit has been breached.
 
         :param num_added: The number of new documents to be added.
         :raise ValueError - If the max limit is reached.
         """
+        if self.documents is None:
+            raise ValueError('No documents initialized')
         if len(self.documents) + num_added >= PROCESS_MAX_RAG_DOCUMENTS:
             raise ValueError(
                 f"`PROCESS_MAX_RAG_DOCUMENTS` limit reached of {PROCESS_MAX_RAG_DOCUMENTS}"
@@ -77,7 +79,9 @@ class RagCollection:
         self.documents = []
 
     def vectorize(
-        self, model: str, persist_directory: str | None = "./chromadb"
+        self,
+        model: str,
+        persist_directory: str = "./chromadb"
     ) -> None:
         """
         Vectorize and persist the documents in the vectorStore.
@@ -92,7 +96,7 @@ class RagCollection:
             # Todo: move to constants
             collection_name="my_document_collection",
             embedding_function=embeddings,
-            persist_directory=persist_directory,  # Optional: for persistent storage
+            persist_directory=persist_directory,
         )
 
         if not self.documents:
@@ -125,7 +129,7 @@ class DocumentsManager(ABC):
         self._timeout_seconds = doc_processing_timeout_seconds
 
     @abstractmethod
-    def build_documents(self) -> list[Document]:
+    def build_documents(self) -> None:
         """
         Builds and returns parsed documents from the data lake.
         """
@@ -150,7 +154,7 @@ class BabylonDocumentsManager(DocumentsManager):
             cls._instance = super(BabylonDocumentsManager, cls).__new__(cls)  # type: ignore
             # Cache a MongoDB API client for the datalake.
             try:
-                cls._instance.datalake_client = cls.__configure_datalake(config)
+                cls._instance.datalake_client = cls.__configure_datalake(config)  # type: ignore
             except Exception as e:
                 message = "Unexpected exception while instantiating MongoDB client."
                 _LOGGER.exception(message, exc_info=e)
@@ -180,7 +184,7 @@ class BabylonDocumentsManager(DocumentsManager):
     @property
     def data_lake(self) -> Datalake:
         """Return the instance's datalake object."""
-        return self._instance.datalake_client
+        return self._instance.datalake_client  # type: ignore
 
     def build_documents(self) -> None:
         """Build Documents from the mongo data lake collections."""
@@ -212,6 +216,8 @@ class BabylonDocumentsManager(DocumentsManager):
             )
         _LOGGER.debug("Finished looping through all collections")
         _LOGGER.info("Persisting vectorized documents to the vector store")
+        if not self._model:
+            raise ValueError('No model set for this instance')
         rag_collection.vectorize(model=self._model)
 
     def __build_rag_collection(self) -> RagCollection:
@@ -255,7 +261,7 @@ class BabylonDocumentsManager(DocumentsManager):
         """
         documents = []
         _LOGGER.debug(f"Fetching documents from collection {datalake_collection}")
-        db_cursor = self.datalake_client.find(
+        db_cursor = self.datalake_client.find(  # type: ignore
             {}, collection=datalake_collection
         )  # pylint: disable=no-member
         for datalake_record in db_cursor:
