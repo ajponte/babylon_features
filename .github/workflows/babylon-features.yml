@@ -1,0 +1,38 @@
+# Simplified and corrected GitHub Actions workflow
+name: babylon-features
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python }}
+    - name: Install tox
+      run: |
+        python -m pip install --upgrade pip
+        pip install tox
+
+#    - name: Download API spec artifact
+#      run: tox -e download-spec
+#      env:
+#        BABYLON_API_GITHUB_PAT_TOKEN: ${{ secrets.BABYLON_API_PAT }}
+
+    - name: Run checks with tox
+      run: |
+        tox -e lint,format,pytest
