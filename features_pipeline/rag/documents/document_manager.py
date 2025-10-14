@@ -79,17 +79,11 @@ class RagCollection:
         """Remove all documents from the internal collection."""
         self.documents = []
 
-    def vectorize(
-        self,
-        model: str,
-        model_config: dict[str, Any]
-    ) -> None:
+    def vectorize(self, model: str, model_config: dict[str, Any]) -> None:
         """
         Vectorize and persist the documents in the vectorStore.
         """
-        vector_store = ChromaVectorStore(
-            model=model, config=model_config
-        )
+        vector_store = ChromaVectorStore(model=model, config=model_config)
 
         if not self.documents:
             _LOGGER.warning(
@@ -212,9 +206,7 @@ class BabylonDocumentsManager(DocumentsManager):
         _LOGGER.info("Persisting vectorized documents to the vector store")
         if not self._model:
             raise ValueError("No model set for this instance")
-        rag_collection.vectorize(
-            model=self._model, model_config=self._model_config
-        )
+        rag_collection.vectorize(model=self._model, model_config=self._model_config)
 
     def __build_rag_collection(self) -> RagCollection:
         """

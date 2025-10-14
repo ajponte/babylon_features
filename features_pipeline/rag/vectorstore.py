@@ -90,10 +90,9 @@ class ChromaVectorStore(VectorStore):
         try:
             self._vector_db.add_documents(documents)
         except Exception as e:
-            message = 'Error while adding documents to Chroma'
+            message = "Error while adding documents to Chroma"
             _LOGGER.info(message)
             raise VectorDBError(message=message, cause=e) from e
-
 
     def similarity_search(
         self, query_text, top_k: int = DEFAULT_TOP_K
