@@ -9,14 +9,13 @@ from datetime import datetime, timezone
 
 from typing import Any
 
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
 
 from features_pipeline.datalake import Datalake
 from features_pipeline.error import RAGError
 from features_pipeline.logger import get_logger
 from features_pipeline.rag.documents.document_builder import build_langchain_document
+from features_pipeline.rag.vectorstore import ChromaVectorStore
 
 logging.basicConfig(level="DEBUG")
 
@@ -80,21 +79,16 @@ class RagCollection:
         """Remove all documents from the internal collection."""
         self.documents = []
 
-    def vectorize(self, model: str, persist_directory: str = "./chromadb") -> None:
+    def vectorize(
+        self,
+        model: str,
+        model_config: dict[str, Any]
+    ) -> None:
         """
         Vectorize and persist the documents in the vectorStore.
         """
-        embeddings = HuggingFaceEmbeddings(
-            model=model,
-            model_kwargs={"device": "cpu"},  # Use 'cuda' or 'mps' for GPU if available
-            encode_kwargs={"normalize_embeddings": True},
-        )
-        # Initialize Chroma, specifying a collection name and persistence directory if needed
-        vector_store = Chroma(
-            # Todo: move to constants
-            collection_name="my_document_collection",
-            embedding_function=embeddings,
-            persist_directory=persist_directory,
+        vector_store = ChromaVectorStore(
+            model=model, config=model_config
         )
 
         if not self.documents:
@@ -162,6 +156,8 @@ class BabylonDocumentsManager(DocumentsManager):
             _LOGGER.info("Instance already exists. Returning cached.")
         # Set the model
         cls._model = config["EMBEDDING_MODEL"]
+        # todo: Eventually this will be a sub-object.
+        cls._model_config = config
         return cls._instance
 
     @classmethod
@@ -216,7 +212,9 @@ class BabylonDocumentsManager(DocumentsManager):
         _LOGGER.info("Persisting vectorized documents to the vector store")
         if not self._model:
             raise ValueError("No model set for this instance")
-        rag_collection.vectorize(model=self._model)
+        rag_collection.vectorize(
+            model=self._model, model_config=self._model_config
+        )
 
     def __build_rag_collection(self) -> RagCollection:
         """

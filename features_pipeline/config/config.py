@@ -19,6 +19,7 @@ CONFIG_LOADERS: list[Loader] = [
     required(key="OPENBAO_SECRETS_PATH"),
     # required(key="SQLALCHEMY_DATABASE_URL"),
     required(key="MONGO_DATA_LAKE_NAME"),
+    required(key="EMBEDDINGS_COLLECTION_CHROMA"),
     optional(
         key="MONGO_CONNECTION_TIMEOUT_SECONDS",
         default_val=DEFAULT_CONNECTION_TIMEOUT_SECONDS,
@@ -30,6 +31,7 @@ CONFIG_LOADERS: list[Loader] = [
     # on a system with greater resources.
     # See https://huggingface.co/BAAI/bge-small-en-v1.5
     optional(key="EMBEDDING_MODEL", default_val="BAAI/bge-small-en-v1.5"),
+    optional(key="CHROMA_SQLITE_DIR", default_val="./chromadb")
 ]
 
 SECRETS_LOADERS: list[Loader] = [

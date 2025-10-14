@@ -59,6 +59,14 @@ class VectorStore(ABC):
         :return: Top k similar embeddings.
         """
 
+    @abstractmethod
+    def add_documents(self, documents: list[Document]) -> None:
+        """
+        Add documents to the vector store.
+
+        :param: Documents to add.
+        """
+
 
 class ChromaVectorStore(VectorStore):
     """
@@ -75,6 +83,17 @@ class ChromaVectorStore(VectorStore):
         """
         super().__init__(model)
         self._vector_db = self.__configure_chroma(config)
+
+    def add_documents(self, documents: list[Document]) -> None:
+        """Add langchain documents to chroma."""
+        _LOGGER.info("Adding documents to vector DB")
+        try:
+            self._vector_db.add_documents(documents)
+        except Exception as e:
+            message = 'Error while adding documents to Chroma'
+            _LOGGER.info(message)
+            raise VectorDBError(message=message, cause=e) from e
+
 
     def similarity_search(
         self, query_text, top_k: int = DEFAULT_TOP_K
