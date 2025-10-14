@@ -15,11 +15,12 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 from features_pipeline.datalake import Datalake
 from features_pipeline.error import RAGError
+from features_pipeline.logger import get_logger
 from features_pipeline.rag.documents.document_builder import build_langchain_document
 
 logging.basicConfig(level="DEBUG")
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = get_logger(__name__)
 
 # Two minutes. Since this flag is set *only* if
 # no value is present, we want it to be as small
@@ -227,25 +228,28 @@ class BabylonDocumentsManager(DocumentsManager):
         :return: A new `RagCollection`.
         """
 
-        def set_rag_process(pid: int, start_ts: float, docments: list) -> RagCollection:
+        def set_rag_process(
+            pid: int, start_ts: float, documents: list
+        ) -> RagCollection:
             """
             Set the start time and current PID for a RAG process.
 
 
             :param pid: Current python PID.
             :param start_ts: PID ts start.
+            :param documents: Documents to vectorize.
             """
-            if len(docments) > 0:
+            if len(documents) > 0:
                 raise ValueError(
-                    f"Documents must be empty to create a new RAGCollection: {len(docments)}"
+                    f"Documents must be empty to create a new RAGCollection: {len(documents)}"
                 )
 
             _LOGGER.debug(f"Starting RAG process: {pid} at {now}")
-            return RagCollection(pid=pid, _start_ts=start_ts, documents=docments)
+            return RagCollection(pid=pid, _start_ts=start_ts, documents=documents)
 
         # Create new `RagCollection` for this python process.
         now = datetime.now().astimezone(timezone.utc)
-        return set_rag_process(pid=os.getpid(), start_ts=now.timestamp(), docments=[])
+        return set_rag_process(pid=os.getpid(), start_ts=now.timestamp(), documents=[])
 
     def build_documents_for_collection(
         self, datalake_collection: str

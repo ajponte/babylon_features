@@ -5,13 +5,16 @@ from typing import Optional
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
-from sympy import vectorize
+
+from features_pipeline.rag.vectorstore import ChromaVectorStore
 
 logging.basicConfig(level='DEBUG')
 
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_EMBEDDING_MODEL = 'BAAI/bge-small-en-v1.5'
+DEFAULT_CHROMA_SQLITE_DIR = './chromadb'
+DEFAULT_EMBEDDINGS_COLLECTION_CHROMA = "my_document_collection"
 
 def load_chroma_db(
         model_name: str,
@@ -64,7 +67,7 @@ def load_chroma_db(
 
 
 def run_test_query(
-        vector_db: Chroma,
+        vector_db: ChromaVectorStore,
         query_text: str,
         k: int = 5
 ) -> list[tuple[Document, float]]:
@@ -85,7 +88,7 @@ def run_test_query(
 
     # Use similarity_search_with_score to get both the document and the relevance score
     # Chroma scores are typically L2 distance or cosine similarity measures.
-    results = vector_db.similarity_search_with_score(query_text, k=k)
+    results = vector_db.similarity_search(query_text=query_text, top_k=k)
 
     # Log the results for inspection
     for doc, score in results:
@@ -95,7 +98,14 @@ def run_test_query(
 
 def main():
     _LOGGER.info('testing chroma db')
-    vector_db = load_chroma_db(model_name=DEFAULT_EMBEDDING_MODEL)
+    # vector_db = load_chroma_db(model_name=DEFAULT_EMBEDDING_MODEL)
+    config = {
+        'EMBEDDINGS_MODEL': DEFAULT_EMBEDDING_MODEL,
+        'CHROMA_SQLITE_DIR': DEFAULT_CHROMA_SQLITE_DIR,
+        'EMBEDDINGS_COLLECTION_CHROMA': DEFAULT_EMBEDDINGS_COLLECTION_CHROMA
+    }
+
+    vector_db = ChromaVectorStore(model=DEFAULT_EMBEDDING_MODEL, config=config)
     query = 'wholefoods'
     _LOGGER.info(f'Testing the query: {query}')
     results = run_test_query(vector_db=vector_db, query_text=query)

@@ -1,16 +1,10 @@
 """Loads config values into a running environment."""
 
 import os
-from typing import Any, Callable, Union
+from typing import Any, Union
 
+from features_pipeline.config.confload import Converter, Loader
 from features_pipeline.config.hashicorp import BaoSecretsManager
-
-# Converts a string key to another type.
-Converter = Callable[[str], Any]
-
-# A loader is a callable which returns a tuple of (key, val) where key
-# is a string (the loader takes no arguments).
-Loader = Callable[[], tuple[str, Any]]
 
 
 # Custom domain-level exceptions.

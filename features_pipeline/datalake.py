@@ -1,15 +1,14 @@
 """Abstractions for interacting with the MongoDB datalake."""
 
-import logging
 from pymongo import MongoClient
 
 from features_pipeline.error import DatalakeError
+from features_pipeline.logger import get_logger
 
 DATALAKE = "babylonDataLake"
 COLLECTION_NAME_PREFIX = "chase-data-"
 
-logging.basicConfig(level="DEBUG")
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = get_logger(__name__)
 
 
 class Datalake:
