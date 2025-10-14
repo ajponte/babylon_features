@@ -228,7 +228,9 @@ class BabylonDocumentsManager(DocumentsManager):
         :return: A new `RagCollection`.
         """
 
-        def set_rag_process(pid: int, start_ts: float, documents: list) -> RagCollection:
+        def set_rag_process(
+            pid: int, start_ts: float, documents: list
+        ) -> RagCollection:
             """
             Set the start time and current PID for a RAG process.
 
