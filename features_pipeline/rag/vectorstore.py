@@ -53,7 +53,7 @@ class VectorStore(ABC):
         :param top_k: Top K.
         :return: Top k similar embeddings.
         """
-        pass
+
 
 class ChromaVectorStore(VectorStore):
     """
@@ -74,7 +74,9 @@ class ChromaVectorStore(VectorStore):
         super().__init__(model)
         self._vector_db = self.__configure_chroma(config)
 
-    def similarity_search(self, query_text, top_k: int = DEFAULT_TOP_K) -> list[SimilarEmbeddingRecord]:
+    def similarity_search(
+            self, query_text, top_k: int = DEFAULT_TOP_K
+    ) -> list[SimilarEmbeddingRecord]:
         """
         Perform similarity search on Chroma.
 

@@ -3,6 +3,7 @@
 import os
 from typing import Any, Union
 
+from features_pipeline.config.confload import Converter, Loader
 from features_pipeline.config.hashicorp import BaoSecretsManager
 
 
