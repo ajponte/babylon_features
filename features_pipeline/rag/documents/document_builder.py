@@ -1,14 +1,12 @@
 """Methods for building RAG documents."""
 
-import logging
-
 from langchain_core.documents import Document
 
+from features_pipeline.logger import get_logger
 from features_pipeline.utils import create_random_uuid_hex
 
-logging.basicConfig(level="DEBUG")
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = get_logger(__name__)
 
 
 def build_langchain_document(source, collection: str) -> Document:

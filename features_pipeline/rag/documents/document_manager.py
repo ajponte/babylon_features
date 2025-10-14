@@ -15,11 +15,12 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 from features_pipeline.datalake import Datalake
 from features_pipeline.error import RAGError
+from features_pipeline.logger import get_logger
 from features_pipeline.rag.documents.document_builder import build_langchain_document
 
 logging.basicConfig(level="DEBUG")
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = get_logger(__name__)
 
 # Two minutes. Since this flag is set *only* if
 # no value is present, we want it to be as small
