@@ -1,3 +1,4 @@
+# pylint: disable=no-member
 """Service object for building a vectorized document."""
 
 import os
@@ -49,7 +50,7 @@ class RagCollection:
         self._check_max_size(len(documents))
         self.documents.extend(documents)
 
-    def _check_max_size(self, num_added: int=0) -> None:
+    def _check_max_size(self, num_added: int = 0) -> None:
         """
         Check if the max size limit has been breached.
 
@@ -57,7 +58,7 @@ class RagCollection:
         :raise ValueError - If the max limit is reached.
         """
         if self.documents is None:
-            raise ValueError('No documents initialized')
+            raise ValueError("No documents initialized")
         if len(self.documents) + num_added >= PROCESS_MAX_RAG_DOCUMENTS:
             raise ValueError(
                 f"`PROCESS_MAX_RAG_DOCUMENTS` limit reached of {PROCESS_MAX_RAG_DOCUMENTS}"
@@ -78,11 +79,7 @@ class RagCollection:
         """Remove all documents from the internal collection."""
         self.documents = []
 
-    def vectorize(
-        self,
-        model: str,
-        persist_directory: str = "./chromadb"
-    ) -> None:
+    def vectorize(self, model: str, persist_directory: str = "./chromadb") -> None:
         """
         Vectorize and persist the documents in the vectorStore.
         """
@@ -217,7 +214,7 @@ class BabylonDocumentsManager(DocumentsManager):
         _LOGGER.debug("Finished looping through all collections")
         _LOGGER.info("Persisting vectorized documents to the vector store")
         if not self._model:
-            raise ValueError('No model set for this instance')
+            raise ValueError("No model set for this instance")
         rag_collection.vectorize(model=self._model)
 
     def __build_rag_collection(self) -> RagCollection:
@@ -263,7 +260,7 @@ class BabylonDocumentsManager(DocumentsManager):
         _LOGGER.debug(f"Fetching documents from collection {datalake_collection}")
         db_cursor = self.datalake_client.find(  # type: ignore
             {}, collection=datalake_collection
-        )  # pylint: disable=no-member
+        )
         for datalake_record in db_cursor:
             _LOGGER.debug(f"Looking at mongo record for cursor: {db_cursor}")
             documents.append(
