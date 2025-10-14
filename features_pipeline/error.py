@@ -102,6 +102,7 @@ class DocumentsCollectionError(BaseException):
         """
         return self._cause
 
+
 class VectorDBError(Exception):
     """
     Throw this error when there's an issue operating on a vector database.
