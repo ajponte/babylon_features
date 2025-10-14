@@ -228,25 +228,26 @@ class BabylonDocumentsManager(DocumentsManager):
         :return: A new `RagCollection`.
         """
 
-        def set_rag_process(pid: int, start_ts: float, docments: list) -> RagCollection:
+        def set_rag_process(pid: int, start_ts: float, documents: list) -> RagCollection:
             """
             Set the start time and current PID for a RAG process.
 
 
             :param pid: Current python PID.
             :param start_ts: PID ts start.
+            :param documents: Documents to vectorize.
             """
-            if len(docments) > 0:
+            if len(documents) > 0:
                 raise ValueError(
-                    f"Documents must be empty to create a new RAGCollection: {len(docments)}"
+                    f"Documents must be empty to create a new RAGCollection: {len(documents)}"
                 )
 
             _LOGGER.debug(f"Starting RAG process: {pid} at {now}")
-            return RagCollection(pid=pid, _start_ts=start_ts, documents=docments)
+            return RagCollection(pid=pid, _start_ts=start_ts, documents=documents)
 
         # Create new `RagCollection` for this python process.
         now = datetime.now().astimezone(timezone.utc)
-        return set_rag_process(pid=os.getpid(), start_ts=now.timestamp(), docments=[])
+        return set_rag_process(pid=os.getpid(), start_ts=now.timestamp(), documents=[])
 
     def build_documents_for_collection(
         self, datalake_collection: str
