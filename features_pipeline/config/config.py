@@ -20,6 +20,8 @@ CONFIG_LOADERS: list[Loader] = [
     # required(key="SQLALCHEMY_DATABASE_URL"),
     required(key="MONGO_DATA_LAKE_NAME"),
     required(key="EMBEDDINGS_COLLECTION_CHROMA"),
+    # The default timeout value to use for various connections (if not overridden).
+    optional(key='DEFAULT_TIMEOUT_SECONDS', default_val='30', converter=to_int),
     optional(
         key="MONGO_CONNECTION_TIMEOUT_SECONDS",
         default_val=DEFAULT_CONNECTION_TIMEOUT_SECONDS,
@@ -57,7 +59,4 @@ def update_config_from_secrets(config: dict[str, Any]) -> None:
 
     :param config: The config dict to update.
     """
-    try:
-        config.update(dict(loader() for loader in SECRETS_LOADERS))
-    except Exception as e:
-        raise SecretsManagerException(message="Error loading secrets", cause=e) from e
+    config.update(dict(loader() for loader in SECRETS_LOADERS))

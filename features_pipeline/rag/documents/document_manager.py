@@ -115,9 +115,13 @@ class DocumentsManager(ABC):
         self._timeout_seconds = doc_processing_timeout_seconds
 
     @abstractmethod
-    def build_documents(self) -> None:
+    def build_documents(self, collection: str|None=None) -> None:
         """
         Builds and returns parsed documents from the data lake.
+
+        :param collection: Optional datalake collection to target. If no value
+                           is present, the method will attempt to loop through
+                           as many collections as possible.
         """
 
 
@@ -174,23 +178,26 @@ class BabylonDocumentsManager(DocumentsManager):
         """Return the instance's datalake object."""
         return self._instance.datalake_client  # type: ignore
 
-    def build_documents(self) -> None:
+    def build_documents(self, collection: str | None = None) -> None:
         """Build Documents from the mongo data lake collections."""
         try:
-            self._build_collection_documents()
+            self._build_collection_documents(collection)
         except Exception as e:
             raise RAGError(
                 message="Error building vectorized documents", cause=e
             ) from e
 
-    def _build_collection_documents(self) -> None:
+    def _build_collection_documents(self, collection: str | None = None) -> None:
         """
         Build a list of RAG documents from a mongo datalake collection.
 
+        :param collection: Optional datalake collection to target. If no value
+                           is present, the method will attempt to loop through
+                           as many collections as possible.
         :return: The documents. The return type of this method is a `RAGCollection`.
         """
         _LOGGER.info(f"Fetching documents from collection {self._collection}")
-        collections = self.data_lake.list_collections()
+        collections = [collection] or self.data_lake.list_collections()
 
         # Set PID, start_ts, etc for current rag/python process.
         # rag_documents_collection.set_rag_process()
