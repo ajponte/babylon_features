@@ -25,6 +25,14 @@ mypy = "^1.17.1"
 pylint = "3.3.7"
 pytest="^8.4.1"
 
+# Dependencies for data visualization.
+[tool.poetry.group.visualize.dependencies]
+numpy = "2.3.4"
+matplotlib = "^3.10.7"
+plotly = "^6.3.1"
+scikit-learn = "1.7.2"
+
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
