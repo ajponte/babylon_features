@@ -91,6 +91,7 @@ class Datalake:
         self,
         start_prefix: str | None = None,
         end_prefix: str | None = None,
+        max_collections: int = 5
     ) -> list[str]:
         """
         Return a list of all collections in the data lake.

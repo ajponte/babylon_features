@@ -8,6 +8,9 @@ from features_pipeline.utils import create_random_uuid_hex
 
 _LOGGER = get_logger()
 
+# Document metadata for langchain.
+type DOCUMENT_META_DATA = dict[str, str | float | int | bool]
+
 
 def build_langchain_document(source, collection: str) -> Document:
     """
@@ -57,7 +60,7 @@ def build_document_metadata(
     source: dict,
     collection: str,
     source_id: str | None = None,
-) -> dict[str, str | float | int | bool]:
+) -> DOCUMENT_META_DATA:
     """
     Build metadata for a LangChain document, ensuring all values are simple types.
 
@@ -79,9 +82,10 @@ def build_document_metadata(
     # Attempt to sanitize the document for any HG Model to understand.
     return _safe_build_document_metadata(source=source, metadata=metadata)
 
+
 def _safe_build_document_metadata(
         source: dict[str, str],
-        metadata: dict[str, str]
+        metadata: DOCUMENT_META_DATA
 ) -> dict[str, str]:
     """
     Return `metadata` so that keys and values, so that all string keys map to simple types.

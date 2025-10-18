@@ -12,6 +12,7 @@ type Converter = Callable[[str], Any]
 # of no arguments, and return a tuple.
 type Loader = Callable[[], tuple[str, Any]]
 
+
 # Custom domain-level exceptions.
 class ConfigError(Exception):
     """Raise this error when there's an issue with loading a config value."""
@@ -71,7 +72,6 @@ class MissingSecretsKey(ConfigError):
         super().__init__(f"Missing Secret Key {key} at path {path}")
 
 
-
 def get_environment_variable(
     *,
     key: str,
@@ -102,25 +102,23 @@ def get_environment_variable(
     return converter(val) if converter else val
 
 
-def get_secret_value(path: str, key: str, converter: Converter | None = None, secrets_manager: BaoSecretsManager | None = None) -> Any:
+def get_secret_value(
+    path: str,
+    key: str,
+    secrets_manager: BaoSecretsManager,
+    converter: Converter | None = None,
+) -> Any:
     """
     Return the secret value for the key at the path.
 
     :param path: The path the secret is stored under.
     :param key: The key to fetch.
     :param converter: Optional converter.
+    :param secrets_manager: Points to an instantiated secrets manager instance.
     :return: The secret value.
     """
-    # todo: testing
-    # bao_addr = 'http://127.0.0.1:8200'
-    # vault_token = 's.FNGa5fI3OtumEW7RcVyeRhZF'
-
-    # secrets: dict = BaoSecretsManager(
-    #     bao_addr=bao_addr,
-    #     vault_token=vault_token
-    # ).get_secret(path=path, key=key)
-
-    secrets: dict =secrets_manager.get_secret(path=path, key=key)
+    secrets: dict = secrets_manager.get_secret(
+        path=path, key=key)
     if key not in secrets.values():
         raise MissingSecretsKey(path=path, key=key)
     return converter(secrets["val"]) if converter else secrets["val"]
@@ -130,8 +128,10 @@ def load_config(*, key: str, value: str) -> str:
     """
     Loads the key/value pair into the environment.
 
-    :param key: The key to load. Since we're loading OS configs, this is a string in all UPPER-CASE.
-    :param value: The value to load. Since we're loading OS configs, this is a string.
+    :param key: The key to load. Since we're loading OS configs,
+                this is a string in all UPPER-CASE.
+    :param value: The value to load. Since we're loading OS configs,
+                  this is a string.
     :return: The value as it exists in the OS config.
     """
     try:
@@ -165,8 +165,7 @@ def required_secret(
     key: str,
     path: str | None = None,
     converter: Converter | None = None,
-    # todo: instantiate sm below.
-    secrets_manager: BaoSecretsManager | None = None
+    secrets_manager: BaoSecretsManager,
 ) -> Loader:
     """
     Fetch a required secret from the secrets manager (as converted if needed).
@@ -175,15 +174,16 @@ def required_secret(
     :param path: The path the secret is stored under. If not path is supplied a default
                  is assumed, whose value exists in the environment.
     :param converter: The optional converter.
+    :param secrets_manager: Points to an instantiated secrets manager instance.
     :return: A loader which will lazily-load the value. We do this by returning
              the loader as a higher-order function, which when invoked will
              return the key, value pair as a Tuple.
     """
     path = path or os.environ["OPENBAO_SECRETS_PATH"]
+
     def loader() -> tuple[str, Any]:
         return key, get_secret_value(
-            key=key, path=path, converter=converter,
-            secrets_manager=secrets_manager
+            key=key, path=path, converter=converter, secrets_manager=secrets_manager
         )
 
     return loader

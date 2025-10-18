@@ -115,7 +115,7 @@ class DocumentsManager(ABC):
         self._timeout_seconds = doc_processing_timeout_seconds
 
     @abstractmethod
-    def build_documents(self, collection: str|None=None) -> None:
+    def build_documents(self, collection: str | None = None) -> None:
         """
         Builds and returns parsed documents from the data lake.
 

@@ -2,19 +2,12 @@
 
 from typing import Any
 
-import features_pipeline.config.configuration_loaders
-
-# from features_pipeline.config.confload import (
-#     Loader,
-#     required,
-#     required_secret,
-#     optional,
-#     to_int,
-# )
-
 from features_pipeline.config.configuration_loaders import (
-    required, required_secret, optional,
-    to_int, to_bool, Loader, Converter
+    required,
+    required_secret,
+    optional,
+    to_int,
+    Loader,
 )
 from features_pipeline.config.hashicorp import BaoSecretsManager
 
@@ -28,7 +21,7 @@ CONFIG_LOADERS: list[Loader] = [
     required(key="MONGO_DATA_LAKE_NAME"),
     required(key="EMBEDDINGS_COLLECTION_CHROMA"),
     # The default timeout value to use for various connections (if not overridden).
-    optional(key='DEFAULT_TIMEOUT_SECONDS', default_val='30', converter=to_int),
+    optional(key="DEFAULT_TIMEOUT_SECONDS", default_val="30", converter=to_int),
     optional(
         key="MONGO_CONNECTION_TIMEOUT_SECONDS",
         default_val=DEFAULT_CONNECTION_TIMEOUT_SECONDS,
@@ -44,10 +37,18 @@ CONFIG_LOADERS: list[Loader] = [
 ]
 
 SECRETS_LOADERS: list[Loader] = [
-    required_secret(key="MONGO_DB_HOST", path="test", secrets_manager=BaoSecretsManager()),
-    required_secret(key="MONGO_DB_PORT", path="test", secrets_manager=BaoSecretsManager()),
-    required_secret(key="MONGO_DB_USER", path="test", secrets_manager=BaoSecretsManager()),
-    required_secret(key="MONGO_DB_PASSWORD", path="test", secrets_manager=BaoSecretsManager()),
+    required_secret(
+        key="MONGO_DB_HOST", path="test", secrets_manager=BaoSecretsManager()
+    ),
+    required_secret(
+        key="MONGO_DB_PORT", path="test", secrets_manager=BaoSecretsManager()
+    ),
+    required_secret(
+        key="MONGO_DB_USER", path="test", secrets_manager=BaoSecretsManager()
+    ),
+    required_secret(
+        key="MONGO_DB_PASSWORD", path="test", secrets_manager=BaoSecretsManager()
+    ),
 ]
 
 
