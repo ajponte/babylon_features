@@ -16,7 +16,7 @@ from features_pipeline.logger import get_logger
 
 DEFAULT_TOP_K = 5
 
-_LOGGER = get_logger(__name__)
+_LOGGER = get_logger()
 
 
 # A `SimilarEmbeddingRecord` is the return type of
@@ -117,7 +117,9 @@ class ChromaVectorStore(VectorStore):
             f"Running similarity search for query: '{query_text}', (k={top_k})"
         )
         try:
-            results = self._chroma_api_client.similarity_search_with_score(query_text, k=top_k)
+            results = self._chroma_api_client.similarity_search_with_score(
+                query_text, k=top_k
+            )
             _LOGGER.info("Successfully searched vector db embeddings for query.")
             _LOGGER.debug(f"results: {len(results)}")
             return results

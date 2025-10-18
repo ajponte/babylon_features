@@ -6,7 +6,7 @@ from features_pipeline.logger import get_logger
 from features_pipeline.utils import create_random_uuid_hex
 
 
-_LOGGER = get_logger(__name__)
+_LOGGER = get_logger()
 
 
 def build_langchain_document(source, collection: str) -> Document:

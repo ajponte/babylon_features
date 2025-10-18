@@ -8,7 +8,7 @@ from features_pipeline.logger import get_logger
 DATALAKE = "babylonDataLake"
 COLLECTION_NAME_PREFIX = "chase-data-"
 
-_LOGGER = get_logger(__name__)
+_LOGGER = get_logger()
 
 
 class Datalake:
