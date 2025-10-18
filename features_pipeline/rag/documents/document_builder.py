@@ -23,10 +23,8 @@ def build_langchain_document(source, collection: str) -> Document:
     source_id = source.pop("_id", None)
     langchain_id = None
     if source_id is not None:
-        # Crucial fix: convert the ObjectId (or any non-string ID) to a string
         langchain_id = str(source_id)
 
-        # 3. Handle missing ID (use a random one if source_id was None)
     if not langchain_id:
         langchain_id = create_random_uuid_hex()
         _LOGGER.info(f"Creating random ID: {langchain_id} for document")
@@ -70,7 +68,6 @@ def build_document_metadata(
     """
     _LOGGER.info(f"Building RAG metadata for collection {collection}")
 
-    # 1. Start with explicit metadata fields
     metadata = {
         "source_collection": collection,
         "source_document_id": source_id,
@@ -79,6 +76,20 @@ def build_document_metadata(
         "type": source.get("Type"),
     }
 
+    # Attempt to sanitize the document for any HG Model to understand.
+    return _safe_build_document_metadata(source=source, metadata=metadata)
+
+def _safe_build_document_metadata(
+        source: dict[str, str],
+        metadata: dict[str, str]
+) -> dict[str, str]:
+    """
+    Return `metadata` so that keys and values, so that all string keys map to simple types.
+
+    :param source: Source datalake record.
+    :param metadata: Raw metadata from datalake record.
+    :return: Sanitize metadata dict.
+    """
     # 2. Safely add all other fields from the source dictionary
     for k, v in source.items():
         if k not in metadata:  # Avoid overriding explicit fields

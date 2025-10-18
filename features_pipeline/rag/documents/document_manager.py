@@ -154,7 +154,6 @@ class BabylonDocumentsManager(DocumentsManager):
             _LOGGER.info("Instance already exists. Returning cached.")
         # Set the model
         cls._model = config["EMBEDDING_MODEL"]
-        # todo: Eventually this will be a sub-object.
         cls._model_config = config
         return cls._instance
 
@@ -169,7 +168,7 @@ class BabylonDocumentsManager(DocumentsManager):
                 connection_timeout_seconds=config["MONGO_CONNECTION_TIMEOUT_SECONDS"],
             )
         except Exception as e:
-            message = "Unexpected exception while instantiating MongoDB client."
+            message = "Unexpected exception while instantiating MongoDB client"
             _LOGGER.exception(message, exc_info=e)
             raise RAGError(message=message, cause=e) from e
 
@@ -197,7 +196,7 @@ class BabylonDocumentsManager(DocumentsManager):
         :return: The documents. The return type of this method is a `RAGCollection`.
         """
         _LOGGER.info(f"Fetching documents from collection {self._collection}")
-        collections = [collection] or self.data_lake.list_collections()
+        collections = [collection] if collection else self.data_lake.list_collections()
 
         # Set PID, start_ts, etc for current rag/python process.
         # rag_documents_collection.set_rag_process()
@@ -272,22 +271,3 @@ class BabylonDocumentsManager(DocumentsManager):
         _LOGGER.info("Closing open DB Cursor")
         db_cursor.close()
         return documents
-
-    def build_document_metadata(self, source: dict) -> dict[str, str]:
-        """
-        Build metadata for a LangChain document.
-
-        :param source: Data source mapping.
-        :return: Metadata as a dict.
-        """
-        # The metadata retains useful filtering info (like the source collection/date)
-        _LOGGER.info(f"Building RAG metadata for collection {self._collection}")
-        metadata = {
-            "source_collection": self._collection,
-            "transaction_date": source.get("PostingDate"),
-            "amount": source.get("Amount"),
-            "type": source.get("Type"),
-            # Add all other fields as metadata for advanced filtering
-            **source,
-        }
-        return metadata

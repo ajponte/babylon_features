@@ -1,12 +1,13 @@
-import os
+import sys
 import argparse
 from dotenv import load_dotenv
 
-from features_pipeline.config.config import update_config_from_environment, update_config_from_secrets
+from features_pipeline.config.config import update_config_from_environment
 from features_pipeline.processor import Processor
 
 _parser = argparse.ArgumentParser(description='Generate Babylon Features')
 _parser.add_argument('--env', help='Target environment e.g. `local`.')
+# todo: Obviously in a production environment this would all be a helm chart
 _parser.add_argument('--env-source', help='Target env source. This might be a .env file.')
 _parser.add_argument('--collection', help='The data source collection')
 
@@ -19,10 +20,13 @@ def main():
     collection = args.collection
     config = {}
     update_config_from_environment(config)
-    update_config_from_secrets(config)
-    print(f'Invoking processor for collection {collection}')
-    Processor(config).process_collection(collection)
-    print(f'Finished processing collection {collection}')
+    try:
+        print(f'Invoking processor for collection {collection}')
+        Processor(config).process_collection(collection)
+        print(f'Finished processing collection {collection}')
+    except Exception as e:
+        print(f'Unable to to process target collection. {e}')
+        sys.exit(1)
 
 def _load_env_from_file(env_file: str):
     load_dotenv(dotenv_path=env_file)

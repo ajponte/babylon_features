@@ -2,14 +2,21 @@
 
 from typing import Any
 
-from features_pipeline.config.confload import (
-    Loader,
-    required,
-    required_secret,
-    optional,
-    to_int,
+import features_pipeline.config.configuration_loaders
+
+# from features_pipeline.config.confload import (
+#     Loader,
+#     required,
+#     required_secret,
+#     optional,
+#     to_int,
+# )
+
+from features_pipeline.config.configuration_loaders import (
+    required, required_secret, optional,
+    to_int, to_bool, Loader, Converter
 )
-from features_pipeline.config.hashicorp import SecretsManagerException
+from features_pipeline.config.hashicorp import BaoSecretsManager
 
 DEFAULT_CONNECTION_TIMEOUT_SECONDS = "30"
 
@@ -37,10 +44,10 @@ CONFIG_LOADERS: list[Loader] = [
 ]
 
 SECRETS_LOADERS: list[Loader] = [
-    required_secret(key="MONGO_DB_HOST", path="test"),
-    required_secret(key="MONGO_DB_PORT", path="test"),
-    required_secret(key="MONGO_DB_USER", path="test"),
-    required_secret(key="MONGO_DB_PASSWORD", path="test"),
+    required_secret(key="MONGO_DB_HOST", path="test", secrets_manager=BaoSecretsManager()),
+    required_secret(key="MONGO_DB_PORT", path="test", secrets_manager=BaoSecretsManager()),
+    required_secret(key="MONGO_DB_USER", path="test", secrets_manager=BaoSecretsManager()),
+    required_secret(key="MONGO_DB_PASSWORD", path="test", secrets_manager=BaoSecretsManager()),
 ]
 
 
@@ -52,11 +59,12 @@ def update_config_from_environment(config: dict[str, Any]) -> None:
     """
     config.update(dict(loader() for loader in CONFIG_LOADERS))
 
+    def update_config_from_secrets(config: dict[str, Any]) -> None:
+        """
+        Update an existing config with values from the secrets store.
 
-def update_config_from_secrets(config: dict[str, Any]) -> None:
-    """
-    Update an existing config with values from the secrets store.
+        :param config: The config dict to update.
+        """
+        config.update(dict(loader() for loader in SECRETS_LOADERS))
 
-    :param config: The config dict to update.
-    """
-    config.update(dict(loader() for loader in SECRETS_LOADERS))
+    update_config_from_secrets(config)

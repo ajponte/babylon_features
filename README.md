@@ -59,3 +59,17 @@ See `visualize.ChartType` for supported charts.
 ![image](scatterplot2d.png)
 
 ![image](scatterplot3d.png)
+
+
+## Data Lake
+This project includes a Data Lake integration with Mongo. See `datalake.py` for the interface.
+
+### Data Loading
+The data lake is primed through various processes. The main process is defined in the
+following project: https://github.com/ajponte/babylon_data_loader
+
+
+## Vector Store & Embedding Model
+This project will prime a Vector Store with embeddings.
+The default vector store is `Chroma`. The embedding model is
+implied to be an open-source Hugging Face model and is defined in `config.py`.
