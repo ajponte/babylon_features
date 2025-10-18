@@ -32,6 +32,9 @@ DEFAULT_DOC_PROCESSING_TIMEOUT_SECONDS = 180
 # for any given python process.
 PROCESS_MAX_RAG_DOCUMENTS = 500
 
+# The max number of datalake records for any cursor to point to.
+DEFAULT_DATA_LAKE_MAX_RECORDS = 500
+
 
 @dataclass
 class RagCollection:
@@ -64,16 +67,16 @@ class RagCollection:
                 f"`PROCESS_MAX_RAG_DOCUMENTS` limit reached of {PROCESS_MAX_RAG_DOCUMENTS}"
             )
 
-    def __add__(self, other):
-        """
-        Add a new langchain `Document` to the list in an instantiated `RAGCollection`.
-
-        :param other: langchain `Document` to add.
-        :return:
-        """
-        self._check_max_size(1)
-        self.documents.append(other)
-        return self
+    # def __add__(self, other):
+    #     """
+    #     Add a new langchain `Document` to the list in an instantiated `RAGCollection`.
+    #
+    #     :param other: langchain `Document` to add.
+    #     :return:
+    #     """
+    #     self._check_max_size(1)
+    #     self.documents.append(other)
+    #     return self
 
     def clear_documents(self) -> None:
         """Remove all documents from the internal collection."""
@@ -128,8 +131,6 @@ class DocumentsManager(ABC):
 class BabylonDocumentsManager(DocumentsManager):
     """Documents manager for Babylon-domain RAG documents."""
 
-    _timeout_seconds: int = DEFAULT_DOC_PROCESSING_TIMEOUT_SECONDS
-
     _instance: Datalake | None = None
 
     _collection: str | None = None
@@ -139,6 +140,7 @@ class BabylonDocumentsManager(DocumentsManager):
 
     # pylint: disable=unused-argument
     def __new__(cls, config: dict[str, Any]):
+        cls._max_records: int = config.get('MAX_DATA_LAKE_RECORDS', DEFAULT_DATA_LAKE_MAX_RECORDS)
         if cls._instance is None:
             # Cache this instance.
             cls._instance = super(BabylonDocumentsManager, cls).__new__(cls)  # type: ignore
@@ -201,14 +203,12 @@ class BabylonDocumentsManager(DocumentsManager):
         # Set PID, start_ts, etc for current rag/python process.
         # rag_documents_collection.set_rag_process()
         rag_collection = self.__build_rag_collection()
-        for datalake_collection in collections:
-            _LOGGER.info(
-                f"Adding new RAG document to RagCollection {rag_collection.pid}"
-            )
-            rag_collection.add_documents(
-                self.build_documents_for_collection(datalake_collection)
-            )
-        _LOGGER.debug("Finished looping through all collections")
+        _LOGGER.info(
+            f"Adding new RAG document to RagCollection {rag_collection.pid}"
+        )
+        rag_collection.add_documents(
+            self.build_documents_for_collection(collections[0])
+        )
         _LOGGER.info("Persisting vectorized documents to the vector store")
         if not self._model:
             raise ValueError("No model set for this instance")
@@ -224,31 +224,14 @@ class BabylonDocumentsManager(DocumentsManager):
         :return: A new `RagCollection`.
         """
 
-        def set_rag_process(
-            pid: int, start_ts: float, documents: list
-        ) -> RagCollection:
-            """
-            Set the start time and current PID for a RAG process.
-
-
-            :param pid: Current python PID.
-            :param start_ts: PID ts start.
-            :param documents: Documents to vectorize.
-            """
-            if len(documents) > 0:
-                raise ValueError(
-                    f"Documents must be empty to create a new RAGCollection: {len(documents)}"
-                )
-
-            _LOGGER.debug(f"Starting RAG process: {pid} at {now}")
-            return RagCollection(pid=pid, _start_ts=start_ts, documents=documents)
-
         # Create new `RagCollection` for this python process.
         now = datetime.now().astimezone(timezone.utc)
         return set_rag_process(pid=os.getpid(), start_ts=now.timestamp(), documents=[])
 
     def build_documents_for_collection(
-        self, datalake_collection: str
+        self,
+        datalake_collection: str,
+        db_cursor
     ) -> list[Document]:
         """
         Build and return a list langchain documents, which were parsed from a MongoDB collection.
@@ -258,8 +241,8 @@ class BabylonDocumentsManager(DocumentsManager):
         """
         documents = []
         _LOGGER.debug(f"Fetching documents from collection {datalake_collection}")
-        db_cursor = self.datalake_client.find(  # type: ignore
-            {}, collection=datalake_collection
+        db_cursor = get_mongo_db_cursor(
+            max_records=self._max_records, collection=self._collection
         )
         for datalake_record in db_cursor:
             _LOGGER.debug(f"Looking at mongo record for cursor: {db_cursor}")
@@ -271,3 +254,54 @@ class BabylonDocumentsManager(DocumentsManager):
         _LOGGER.info("Closing open DB Cursor")
         db_cursor.close()
         return documents
+
+def set_rag_process(
+    pid: int, start_ts: float, documents: list
+) -> RagCollection:
+    """
+    Set the start time and current PID for a RAG process.
+
+
+    :param pid: Current python PID.
+    :param start_ts: PID ts start.
+    :param documents: Documents to vectorize.
+    """
+    if len(documents) > 0:
+        raise ValueError(
+            f"Documents must be empty to create a new RAGCollection: {len(documents)}"
+        )
+
+    _LOGGER.debug(f"Starting RAG process: {pid} at {start_ts}")
+    return RagCollection(pid=pid, _start_ts=start_ts, documents=documents)
+
+
+def __configure_datalake(config: dict) -> Datalake:
+    """
+    Return a configured datalake instance.
+
+    :param config: datalake connection config.
+    :return: Configured datalake instance.
+    """
+    try:
+        return Datalake(
+            host=config["MONGO_DB_HOST"],
+            port=config["MONGO_DB_PORT"],
+            username=config["MONGO_DB_USER"],
+            password=config["MONGO_DB_PASSWORD"],
+            connection_timeout_seconds=config["MONGO_CONNECTION_TIMEOUT_SECONDS"],
+        )
+    except Exception as e:
+        message = "Unexpected exception while instantiating MongoDB client"
+        _LOGGER.exception(message, exc_info=e)
+        raise RAGError(message=message, cause=e) from e
+
+def get_mongo_db_cursor(max_records: int, collection: str):
+    """
+    Open new cursor.
+    :return: Cursor.
+    """
+    _LOGGER.info(f"Opening mongo cursor for {collection}")
+    db_cursor = self.datalake_client.find(  # type: ignore
+        {}, collection=collection
+    ).limit(max_records)
+    return db_cursor

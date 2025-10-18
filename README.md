@@ -1,6 +1,18 @@
 # babylon_features
 Feature &amp; RAG generation for Babylon
 
+## Vector Store
+This project uses the concept of a Vector Store to preserve embeddings.
+
+### Embedding (Hugging Face) Model
+The embedding model can be configured (see `EMBEDDING_MODEL`).
+This project has been tested on a  macbook with the following models:
+
+- `BAAI/bge-small-en-v1.5`
+
+## Data Lake Integration
+This project includes a data lake integration with mongo. See `datalake.py`.
+
 ## Package Management
 ### Poetry
 This project uses `poetry` for package management.

@@ -34,6 +34,7 @@ CONFIG_LOADERS: list[Loader] = [
     # See https://huggingface.co/BAAI/bge-small-en-v1.5
     optional(key="EMBEDDING_MODEL", default_val="BAAI/bge-small-en-v1.5"),
     optional(key="CHROMA_SQLITE_DIR", default_val="./chromadb"),
+    optional(key="DATA_LAKE_MAX_RECORDS", default_val="500")
 ]
 
 SECRETS_LOADERS: list[Loader] = [
