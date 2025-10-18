@@ -13,8 +13,8 @@ _parser.add_argument('--collection', help='The data source collection')
 def main():
     args = _parser.parse_known_args()[0]
     env_source = args.env_source
-    if env_source:
-        _load_env_from_file(env_source)
+    _load_env_from_file(env_source)
+
     collection = args.collection
     config = {}
     update_config_from_environment(config)
@@ -26,9 +26,13 @@ def main():
         print(f'Unable to to process target collection. {e}')
         sys.exit(1)
 
-def _load_env_from_file(env_file: str):
-    load_dotenv(dotenv_path=env_file)
-    print(f'loaded {env_file}')
+def _load_env_from_file(env_file: str | None):
+    if env_file:
+        load_dotenv(dotenv_path=env_file)
+        print(f'loaded {env_file}')
+    else:
+        load_dotenv()
+        print(f'loaded from internal env file')
 
 if __name__ == '__main__':
     main()
