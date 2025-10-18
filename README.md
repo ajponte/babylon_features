@@ -50,3 +50,9 @@ pipeline, we will never rewrite files.
 
 ### Type Checking
 This project (somewhat) enforces static typing through `mypy`.
+
+## Vectorstore Visualization
+Running `poetry run python visualize.py` will generate a 2d scatterplot
+of the vectors.
+
+![image](scatterplot.png)

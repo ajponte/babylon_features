@@ -1,3 +1,6 @@
+"""
+Data visualization tools.
+"""
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
@@ -20,22 +23,49 @@ def visualize_vector_store(vector_store: ChromaVectorStore):
 
     :param vector_store: Vector Store.
     """
-    collection = vector_store.db_client._collection
+    # Access the underlying Chroma collection object from the vector store instance
+    collection = vector_store.db_client._collection # Access the internal Chroma object
     count = collection.count()
     _LOGGER.info(f'Found {count} items in the collection')
 
-    sample_embeddings = get_sample_embeddings(collection)
+    # Fetch all embeddings, documents, and metadatas
+    sample_embeddings = get_all_embeddings(collection) # Corrected function call to get all
 
-    dimensions = len(sample_embeddings)
-    print(f"There are {count:,} vectors with {dimensions:,} dimensions in the vector store")
+    # Get the list of embeddings
+    embeddings_list = sample_embeddings.get('embeddings')
 
+    # Check for embeddings: Ensure the key exists and the collection is not empty.
+    # We use 'is None' and explicit length check to avoid ambiguous truthiness on array-like objects.
+    if embeddings_list is None or len(embeddings_list) == 0:
+        _LOGGER.warning("No embeddings found in the collection. Cannot visualize.")
+        return
 
-    vectors = np.array(sample_embeddings['embeddings'])
+    # The returned structure contains lists of embeddings, documents, and metadatas
+    vectors = np.array(embeddings_list) # Convert the list of embeddings to a NumPy array
     documents = sample_embeddings['documents']
     metadatas = sample_embeddings['metadatas']
-    doc_types = [metadata['doc_type'] for metadata in metadatas]
-    colors = [['blue', 'green', 'red', 'orange'][['products', 'employees', 'contracts', 'company'].index(t)] for t in
-              doc_types]
+
+    # Get the dimensionality from the first vector's size (assuming all are consistent)
+    dimensions = vectors.shape[1]
+    # Use the actual number of fetched vectors for the count
+    num_vectors = vectors.shape[0]
+
+    print(f"There are {num_vectors:,} vectors with {dimensions:,} dimensions in the vector store")
+
+
+    # Process metadatas to get doc types and colors
+    # Ensure metadatas are available and not None/empty
+    if metadatas:
+        doc_types = [metadata.get('doc_type', 'unknown') for metadata in metadatas] # Use .get for safety
+        # Mapping doc_types to colors (Ensure the categories match the actual data/intent)
+        category_map = {'products': 0, 'employees': 1, 'contracts': 2, 'company': 3}
+        colors_list = ['blue', 'green', 'red', 'orange']
+
+        # Assign a color based on the doc_type, defaulting to the last color if not in map
+        colors = [colors_list[category_map.get(t, len(colors_list) - 1)] for t in doc_types]
+    else:
+        doc_types = ['unknown'] * num_vectors
+        colors = ['gray'] * num_vectors # Default to gray if no metadata
 
     # Reduce vectors to 2d
     reduced_vectors = tsne_reduce(vectors)
@@ -50,27 +80,44 @@ def visualize_vector_store(vector_store: ChromaVectorStore):
     _LOGGER.info("Displaying scatter plot")
     scatter_plot.show()
 
-def get_sample_embeddings(collection):
-    _LOGGER.info(f'Fetching embeddings from collection {collection.name}')
-    import pdb; pdb.set_trace()
-    sample_embedding = collection.get(limit=1, include=["embeddings"])["embeddings"][0]
-    vectors = np.array(sample_embedding)
-    return vectors
+# Renamed function and updated logic to fetch all data
+def get_all_embeddings(collection):
+    """
+    Fetch all data (embeddings, documents, metadatas) from the collection.
+    """
+    _LOGGER.info(f'Fetching ALL data from collection {collection.name}')
+    # Fetches all data (limit=None) and includes all necessary fields
+    # We remove the pdb.set_trace() as it halts execution
+    results = collection.get(
+        ids=collection.get()['ids'], # A way to get all IDs
+        include=["embeddings", "documents", "metadatas"]
+    )
+    # The Chroma 'get' results dictionary already contains:
+    # 'ids', 'embeddings', 'documents', 'metadatas'
+    return results
 
-def tsne_reduce(vectors):
+def tsne_reduce(vectors: NDArray) -> NDArray:
     """
     Reduce the dimensionality of the vectors to 2D using t-SNE
-    (t-distributed stochastic neighbor embedding)
-    :return:
+    (t-distributed stochastic neighbor embedding).
+
+    :param vectors: High-dimensional vectors.
+    :return: 2D reduced vectors.
     """
+    # Safety check: t-SNE requires at least 2 samples
+    if vectors.shape[0] < 2:
+        _LOGGER.warning("Not enough samples for t-SNE reduction (need at least 2).")
+        return np.empty((0, 2))
+
     tsne = TSNE(n_components=2, random_state=42)
+    # The fit_transform method expects a 2D array: (n_samples, n_features)
     reduced_vectors = tsne.fit_transform(vectors)
     return reduced_vectors
 
 def create_scatter_plot(
-        reduced_vectors,
+        reduced_vectors: NDArray,
         doc_types: list,
-        documents: NDArray,
+        documents: list, # Changed from NDArray to list as documents is list of strings
         colors: list | None = None
 ):
     """
@@ -78,23 +125,31 @@ def create_scatter_plot(
 
     :param reduced_vectors: 2d reduced vectors.
     :param doc_types: Doctype data points categories.
-    :param documents: Document vectors as np array.
+    :param documents: Document texts.
     :param colors: Data point colors
     :return: Scatter plat Figure
     """
+    if reduced_vectors.shape[0] == 0:
+        _LOGGER.warning("No data points to plot.")
+        return go.Figure()
+
     # Create the 2D scatter plot
     fig = go.Figure(data=[go.Scatter(
         x=reduced_vectors[:, 0],
         y=reduced_vectors[:, 1],
         mode='markers',
-        marker=dict(size=5, color=colors, opacity=0.8),
+        # Use a list of colors
+        marker=dict(size=5, color=colors if colors else 'blue', opacity=0.8),
+        # Use documents as a list of strings
         text=[f"Type: {t}<br>Text: {d[:100]}..." for t, d in zip(doc_types, documents)],
         hoverinfo='text'
     )])
 
     fig.update_layout(
-        title='2D Chroma Vector Store Visualization',
-        scene=dict(xaxis_title='x', yaxis_title='y'),
+        title='2D Chroma Vector Store Visualization (t-SNE)',
+        # Changed 'scene' to 'xaxis' and 'yaxis' for a 2D plot
+        xaxis_title='t-SNE Dimension 1',
+        yaxis_title='t-SNE Dimension 2',
         width=800,
         height=600,
         margin=dict(r=20, b=10, l=10, t=40)
