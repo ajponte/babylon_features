@@ -6,14 +6,12 @@ from features_pipeline.config.config import update_config_from_environment
 from features_pipeline.processor import Processor
 
 _parser = argparse.ArgumentParser(description='Generate Babylon Features')
-_parser.add_argument('--env', help='Target environment e.g. `local`.')
 # todo: Obviously in a production environment this would all be a helm chart
 _parser.add_argument('--env-source', help='Target env source. This might be a .env file.')
 _parser.add_argument('--collection', help='The data source collection')
 
 def main():
     args = _parser.parse_known_args()[0]
-    env = args.env
     env_source = args.env_source
     if env_source:
         _load_env_from_file(env_source)

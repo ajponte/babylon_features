@@ -37,13 +37,19 @@ COPY dist/features_pipeline-*.tar.gz ./
 # 6. Extract the artifact and clean up the tarball.
 # --strip-components=1 removes the top-level directory, placing contents directly in /usr/src/app.
 RUN tar -xzf features_pipeline-*.tar.gz --strip-components=1 \
-    && rm features_pipeline-*.tar.gz
+    && rm features_pipeline-*.tar.gz \
+    && echo "--- Contents after extraction ---" \
+    && ls -lR
 
 # 7. Copy the .env file now that the application structure is in place.
 COPY .env .
 
+# Copy run script
+COPY dev.py ./
+
 # Set the entrypoint to use poetry's executable.
 ENTRYPOINT ["poetry", "run"]
 
-# The command to run your application's entry point.
-CMD ["python", "main.py"]
+# The command is updated to look inside the package directory: features_pipeline/main.py.
+# This is the standard location for source files in a Poetry-built sdist.
+CMD ["python", "dev.py"]
