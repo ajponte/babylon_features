@@ -19,7 +19,7 @@ from features_pipeline.rag.vectorstore import ChromaVectorStore
 
 logging.basicConfig(level="DEBUG")
 
-_LOGGER = get_logger(__name__)
+_LOGGER = get_logger()
 
 # Two minutes. Since this flag is set *only* if
 # no value is present, we want it to be as small

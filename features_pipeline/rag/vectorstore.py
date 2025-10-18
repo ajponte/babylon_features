@@ -16,7 +16,7 @@ from features_pipeline.logger import get_logger
 
 DEFAULT_TOP_K = 5
 
-_LOGGER = get_logger(__name__)
+_LOGGER = get_logger()
 
 
 # A `SimilarEmbeddingRecord` is the return type of
@@ -82,13 +82,22 @@ class ChromaVectorStore(VectorStore):
         :param config: Chroma config.
         """
         super().__init__(model)
-        self._vector_db = self.__configure_chroma(config)
+        self._chroma_api_client: Chroma = self.__configure_chroma(config)
+
+    @property
+    def db_client(self) -> Chroma:
+        """
+        Return Chroma DB client.
+
+        :return: Chroma DB client.
+        """
+        return self._chroma_api_client
 
     def add_documents(self, documents: list[Document]) -> None:
         """Add langchain documents to chroma."""
         _LOGGER.info("Adding documents to vector DB")
         try:
-            self._vector_db.add_documents(documents)
+            self._chroma_api_client.add_documents(documents)
         except Exception as e:
             message = "Error while adding documents to Chroma"
             _LOGGER.info(message)
@@ -108,7 +117,9 @@ class ChromaVectorStore(VectorStore):
             f"Running similarity search for query: '{query_text}', (k={top_k})"
         )
         try:
-            results = self._vector_db.similarity_search_with_score(query_text, k=top_k)
+            results = self._chroma_api_client.similarity_search_with_score(
+                query_text, k=top_k
+            )
             _LOGGER.info("Successfully searched vector db embeddings for query.")
             _LOGGER.debug(f"results: {len(results)}")
             return results
