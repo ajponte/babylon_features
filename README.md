@@ -54,5 +54,8 @@ This project (somewhat) enforces static typing through `mypy`.
 ## Vectorstore Visualization
 Running `poetry run python visualize.py` will generate a 2d scatterplot
 of the vectors.
+See `visualize.ChartType` for supported charts.
 
-![image](scatterplot.png)
+![image](scatterplot2d.png)
+
+![image](scatterplot3d.png)
