@@ -84,8 +84,7 @@ def build_document_metadata(
 
 
 def _safe_build_document_metadata(
-        source: dict[str, str],
-        metadata: DOCUMENT_META_DATA
+    source: dict[str, str], metadata: DOCUMENT_META_DATA
 ) -> dict[str, str]:
     """
     Return `metadata` so that keys and values, so that all string keys map to simple types.

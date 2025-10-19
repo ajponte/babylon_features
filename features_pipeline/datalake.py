@@ -107,7 +107,6 @@ class Datalake:
         self,
         start_prefix: str | None = None,
         end_prefix: str | None = None,
-        max_collections: int = 5
     ) -> list[str]:
         """
         Return a list of all collections in the data lake.
@@ -119,13 +118,6 @@ class Datalake:
         if self._db is None:
             raise DatalakeError(message="Database connection not initialized.")
         all_collection_names = self.all_collections()
-        #
-        # try:
-        #     all_collection_names: list[str] = self._db.list_collection_names()
-        # except Exception as e:
-        #     raise DatalakeError(
-        #         message="Failed to list collection names", cause=e
-        #     ) from e
 
         _LOGGER.debug(f"Found {len(all_collection_names)} total collections.")
         _LOGGER.info(

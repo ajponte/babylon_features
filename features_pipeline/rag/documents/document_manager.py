@@ -143,7 +143,9 @@ class BabylonDocumentsManager(DocumentsManager):
 
     # pylint: disable=unused-argument
     def __new__(cls, config: dict[str, Any], datalake: Datalake):
-        cls._max_records: int = config.get('MAX_DATA_LAKE_RECORDS', DEFAULT_DATA_LAKE_MAX_RECORDS)
+        cls._max_records: int = config.get(
+            "MAX_DATA_LAKE_RECORDS", DEFAULT_DATA_LAKE_MAX_RECORDS
+        )
         if cls._instance is None:
             # Cache this instance.
             cls._instance = super(BabylonDocumentsManager, cls).__new__(cls)  # type: ignore
@@ -161,7 +163,6 @@ class BabylonDocumentsManager(DocumentsManager):
         cls._model = config["EMBEDDING_MODEL"]
         cls._model_config = config
         return cls._instance
-
 
     @property
     def data_lake(self) -> Datalake:
@@ -192,9 +193,7 @@ class BabylonDocumentsManager(DocumentsManager):
         # Set PID, start_ts, etc for current rag/python process.
         # rag_documents_collection.set_rag_process()
         rag_collection = self.__build_rag_collection()
-        _LOGGER.info(
-            f"Adding new RAG document to RagCollection {rag_collection.pid}"
-        )
+        _LOGGER.info(f"Adding new RAG document to RagCollection {rag_collection.pid}")
         rag_collection.add_documents(
             self.build_documents_for_collection(collections[0])
         )
@@ -243,9 +242,8 @@ class BabylonDocumentsManager(DocumentsManager):
         db_cursor.close()
         return documents
 
-def set_rag_process(
-    pid: int, start_ts: float, documents: list
-) -> RagCollection:
+
+def set_rag_process(pid: int, start_ts: float, documents: list) -> RagCollection:
     """
     Set the start time and current PID for a RAG process.
 
@@ -282,6 +280,7 @@ def __configure_datalake(config: dict) -> Datalake:
         message = "Unexpected exception while instantiating MongoDB client"
         _LOGGER.exception(message, exc_info=e)
         raise RAGError(message=message, cause=e) from e
+
 
 def get_mongo_db_cursor(max_records: int, collection: str):
     """

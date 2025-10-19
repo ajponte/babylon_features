@@ -117,8 +117,7 @@ def get_secret_value(
     :param secrets_manager: Points to an instantiated secrets manager instance.
     :return: The secret value.
     """
-    secrets: dict = secrets_manager.get_secret(
-        path=path, key=key)
+    secrets: dict = secrets_manager.get_secret(path=path, key=key)
     if key not in secrets.values():
         raise MissingSecretsKey(path=path, key=key)
     return converter(secrets["val"]) if converter else secrets["val"]
