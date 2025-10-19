@@ -107,7 +107,7 @@ class RagCollection:
 class DocumentsManager(ABC):
     """Abstract parent class for Building and returning parsed documents from the data lake."""
 
-    def __init__(self, doc_processing_timeout_seconds: int):
+    def __init__(self, doc_processing_timeout_seconds: int, datalake: Datalake):
         """
         Constructor.
 
@@ -115,6 +115,7 @@ class DocumentsManager(ABC):
                                                while an instance of this DocumentManager
                                                is processing documents.
         """
+        self._datalake = datalake
         self._timeout_seconds = doc_processing_timeout_seconds
 
     @abstractmethod
@@ -138,15 +139,17 @@ class BabylonDocumentsManager(DocumentsManager):
     # The model to use for embeddings.
     _model: str | None = None
 
+    _datalake: Datalake | None = None
+
     # pylint: disable=unused-argument
-    def __new__(cls, config: dict[str, Any]):
+    def __new__(cls, config: dict[str, Any], datalake: Datalake):
         cls._max_records: int = config.get('MAX_DATA_LAKE_RECORDS', DEFAULT_DATA_LAKE_MAX_RECORDS)
         if cls._instance is None:
             # Cache this instance.
             cls._instance = super(BabylonDocumentsManager, cls).__new__(cls)  # type: ignore
             # Cache a MongoDB API client for the datalake.
             try:
-                cls._instance.datalake_client = cls.__configure_datalake(config)  # type: ignore
+                cls._instance.datalake = datalake  # type: ignore
             except Exception as e:
                 message = "Unexpected exception while instantiating MongoDB client."
                 _LOGGER.exception(message, exc_info=e)
@@ -159,25 +162,11 @@ class BabylonDocumentsManager(DocumentsManager):
         cls._model_config = config
         return cls._instance
 
-    @classmethod
-    def __configure_datalake(cls, config: dict) -> Datalake:
-        try:
-            return Datalake(
-                host=config["MONGO_DB_HOST"],
-                port=config["MONGO_DB_PORT"],
-                username=config["MONGO_DB_USER"],
-                password=config["MONGO_DB_PASSWORD"],
-                connection_timeout_seconds=config["MONGO_CONNECTION_TIMEOUT_SECONDS"],
-            )
-        except Exception as e:
-            message = "Unexpected exception while instantiating MongoDB client"
-            _LOGGER.exception(message, exc_info=e)
-            raise RAGError(message=message, cause=e) from e
 
     @property
     def data_lake(self) -> Datalake:
         """Return the instance's datalake object."""
-        return self._instance.datalake_client  # type: ignore
+        return self._instance.datalake  # type: ignore
 
     def build_documents(self, collection: str | None = None) -> None:
         """Build Documents from the mongo data lake collections."""
@@ -231,7 +220,6 @@ class BabylonDocumentsManager(DocumentsManager):
     def build_documents_for_collection(
         self,
         datalake_collection: str,
-        db_cursor
     ) -> list[Document]:
         """
         Build and return a list langchain documents, which were parsed from a MongoDB collection.

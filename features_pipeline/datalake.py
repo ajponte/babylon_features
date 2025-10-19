@@ -5,7 +5,6 @@ from pymongo import MongoClient
 from features_pipeline.error import DatalakeError
 from features_pipeline.logger import get_logger
 
-DATALAKE = "babylonDataLake"
 COLLECTION_NAME_PREFIX = "chase-data-"
 
 _LOGGER = get_logger()
@@ -22,7 +21,7 @@ class Datalake:
         port: int | str,
         username: str,
         password: str,
-        datalake_name: str = DATALAKE,
+        datalake_db_name: str,
         connection_timeout_seconds: int = 10,
     ):
         """
@@ -32,11 +31,11 @@ class Datalake:
         :param port: MongoDB port.
         :param username: MongoDB username.
         :param password: MongoDB password.
-        :param datalake_name: Datalake name.
+        :param datalake_db_name: Datalake DB name.
         :param connection_timeout_seconds: Max timeout seconds.
         """
         self._mongo_uri = f"mongodb://{host}:{port}"
-        self._datalake_name = datalake_name
+        self._datalake_name = datalake_db_name
         self._collection_name_prefix = COLLECTION_NAME_PREFIX
         self._client = None
         self._db = None
@@ -87,6 +86,23 @@ class Datalake:
                 message=f"Failed to query collection '{collection}'", cause=e
             ) from e
 
+    def all_collections(self) -> list[str]:
+        """
+        Return all collection names in this datalake.
+
+        :return: All collection names.
+        """
+        if self._db is None:
+            raise DatalakeError(message="Database connection not initialized.")
+
+        try:
+            all_collection_names: list[str] = self._db.list_collection_names()
+        except Exception as e:
+            raise DatalakeError(
+                message="Failed to list collection names", cause=e
+            ) from e
+        return all_collection_names
+
     def list_collections(
         self,
         start_prefix: str | None = None,
@@ -102,13 +118,14 @@ class Datalake:
         """
         if self._db is None:
             raise DatalakeError(message="Database connection not initialized.")
-
-        try:
-            all_collection_names: list[str] = self._db.list_collection_names()
-        except Exception as e:
-            raise DatalakeError(
-                message="Failed to list collection names", cause=e
-            ) from e
+        all_collection_names = self.all_collections()
+        #
+        # try:
+        #     all_collection_names: list[str] = self._db.list_collection_names()
+        # except Exception as e:
+        #     raise DatalakeError(
+        #         message="Failed to list collection names", cause=e
+        #     ) from e
 
         _LOGGER.debug(f"Found {len(all_collection_names)} total collections.")
         _LOGGER.info(
