@@ -1,6 +1,18 @@
 # babylon_features
 Feature &amp; RAG generation for Babylon
 
+## Vector Store
+This project uses the concept of a Vector Store to preserve embeddings.
+
+### Embedding (Hugging Face) Model
+The embedding model can be configured (see `EMBEDDING_MODEL`).
+This project has been tested on a  macbook with the following models:
+
+- `BAAI/bge-small-en-v1.5`
+
+## Data Lake Integration
+This project includes a data lake integration with mongo. See `datalake.py`.
+
 ## Package Management
 ### Poetry
 This project uses `poetry` for package management.
@@ -59,3 +71,17 @@ See `visualize.ChartType` for supported charts.
 ![image](scatterplot2d.png)
 
 ![image](scatterplot3d.png)
+
+
+## Data Lake
+This project includes a Data Lake integration with Mongo. See `datalake.py` for the interface.
+
+### Data Loading
+The data lake is primed through various processes. The main process is defined in the
+following project: https://github.com/ajponte/babylon_data_loader
+
+
+## Vector Store & Embedding Model
+This project will prime a Vector Store with embeddings.
+The default vector store is `Chroma`. The embedding model is
+implied to be an open-source Hugging Face model and is defined in `config.py`.

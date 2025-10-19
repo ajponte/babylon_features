@@ -2,14 +2,14 @@
 
 from typing import Any
 
-from features_pipeline.config.confload import (
-    Loader,
+from features_pipeline.config.configuration_loaders import (
     required,
     required_secret,
     optional,
     to_int,
+    Loader,
 )
-from features_pipeline.config.hashicorp import SecretsManagerException
+from features_pipeline.config.hashicorp import BaoSecretsManager
 
 DEFAULT_CONNECTION_TIMEOUT_SECONDS = "30"
 
@@ -20,6 +20,8 @@ CONFIG_LOADERS: list[Loader] = [
     # required(key="SQLALCHEMY_DATABASE_URL"),
     required(key="MONGO_DATA_LAKE_NAME"),
     required(key="EMBEDDINGS_COLLECTION_CHROMA"),
+    # The default timeout value to use for various connections (if not overridden).
+    optional(key="DEFAULT_TIMEOUT_SECONDS", default_val="30", converter=to_int),
     optional(
         key="MONGO_CONNECTION_TIMEOUT_SECONDS",
         default_val=DEFAULT_CONNECTION_TIMEOUT_SECONDS,
@@ -32,13 +34,22 @@ CONFIG_LOADERS: list[Loader] = [
     # See https://huggingface.co/BAAI/bge-small-en-v1.5
     optional(key="EMBEDDING_MODEL", default_val="BAAI/bge-small-en-v1.5"),
     optional(key="CHROMA_SQLITE_DIR", default_val="./chromadb"),
+    optional(key="DATA_LAKE_MAX_RECORDS", default_val="500"),
 ]
 
 SECRETS_LOADERS: list[Loader] = [
-    required_secret(key="MONGO_DB_HOST", path="test"),
-    required_secret(key="MONGO_DB_PORT", path="test"),
-    required_secret(key="MONGO_DB_USER", path="test"),
-    required_secret(key="MONGO_DB_PASSWORD", path="test"),
+    required_secret(
+        key="MONGO_DB_HOST", path="test", secrets_manager=BaoSecretsManager()
+    ),
+    required_secret(
+        key="MONGO_DB_PORT", path="test", secrets_manager=BaoSecretsManager()
+    ),
+    required_secret(
+        key="MONGO_DB_USER", path="test", secrets_manager=BaoSecretsManager()
+    ),
+    required_secret(
+        key="MONGO_DB_PASSWORD", path="test", secrets_manager=BaoSecretsManager()
+    ),
 ]
 
 
@@ -50,14 +61,12 @@ def update_config_from_environment(config: dict[str, Any]) -> None:
     """
     config.update(dict(loader() for loader in CONFIG_LOADERS))
 
+    def update_config_from_secrets(config: dict[str, Any]) -> None:
+        """
+        Update an existing config with values from the secrets store.
 
-def update_config_from_secrets(config: dict[str, Any]) -> None:
-    """
-    Update an existing config with values from the secrets store.
-
-    :param config: The config dict to update.
-    """
-    try:
+        :param config: The config dict to update.
+        """
         config.update(dict(loader() for loader in SECRETS_LOADERS))
-    except Exception as e:
-        raise SecretsManagerException(message="Error loading secrets", cause=e) from e
+
+    update_config_from_secrets(config)

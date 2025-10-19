@@ -19,6 +19,10 @@ langchain-community = "^0.3.31"
 hvac = "2.3.0"
 sentence-transformers = "^5.1.1"
 
+# Using the modern, explicit dependency group syntax for 'test'
+[tool.poetry.group.test]
+optional = true
+
 [tool.poetry.group.test.dependencies]
 black = "25.1.0"
 mypy = "^1.17.1"
@@ -36,3 +40,10 @@ scikit-learn = "1.7.2"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+# Configuration for tox environments, including the 'dist' build environment
+[tool.tox.legacy]
+[tool.tox.legacy.testenv.dist]
+description = "Build a distribution via poetry."
+commands = ["poetry build"]
+allowlist_externals = ["poetry"]

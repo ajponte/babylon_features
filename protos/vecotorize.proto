@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+// The gRPC service for submitting vectorization tasks.
+
+// Matches the input data structure requested by the user.
+message VectorizeRequest {
+  // Expected to be "vectorize"
+  string type = 1;
+
+  // The source system, e.g., "datalake"
+  string source = 2;
+
+  // The collection name to be processed
+  string collection = 3;
+}
+
+// The response structure sent back to the client.
+message VectorizeResponse {
+  // Status of the task (e.g., "SUCCESS", "PENDING", "ERROR")
+  string status = 1;
+
+  // A detailed message about the outcome
+  string message = 2;
+
+  // Mock count of items processed
+  int32 processed_count = 3;
+}
+
+// The service contract
+service VectorizeService {
+  // RPC method to submit the task
+  rpc SubmitVectorizationTask (VectorizeRequest) returns (VectorizeResponse);
+}
