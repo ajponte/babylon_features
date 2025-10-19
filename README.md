@@ -1,6 +1,10 @@
 # babylon_features
 Feature &amp; RAG generation for Babylon
 
+## Data Lake
+The pipeline depends on a mongo data source. Data for babylon is loaded via
+the [Data Loader Go Routine](https://github.com/ajponte/babylon_data_loader)
+
 ## Package Management
 ### Poetry
 This project uses `poetry` for package management.
