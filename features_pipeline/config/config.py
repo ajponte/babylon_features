@@ -2,14 +2,14 @@
 
 from typing import Any
 
-from features_pipeline.config.confload import (
+from features_pipeline.config.configuration_loaders import (
     Loader,
     required,
     required_secret,
     optional,
     to_int,
 )
-from features_pipeline.config.hashicorp import SecretsManagerException
+from features_pipeline.config.hashicorp import SecretsManagerException, BaoSecretsManager
 
 DEFAULT_CONNECTION_TIMEOUT_SECONDS = "30"
 
@@ -35,12 +35,17 @@ CONFIG_LOADERS: list[Loader] = [
 ]
 
 SECRETS_LOADERS: list[Loader] = [
-    required_secret(key="MONGO_DB_HOST", path="test"),
-    required_secret(key="MONGO_DB_PORT", path="test"),
-    required_secret(key="MONGO_DB_USER", path="test"),
-    required_secret(key="MONGO_DB_PASSWORD", path="test"),
+    required_secret(key="MONGO_DB_HOST"),
+    required_secret(key="MONGO_DB_PORT"),
+    required_secret(key="MONGO_DB_USER"),
+    required_secret(key="MONGO_DB_PASSWORD"),
 ]
 
+
+def update_config(config: dict[str, Any]) -> None:
+    import pdb; pdb.set_trace()
+    update_config_from_environment(config)
+    update_config_from_secrets(config)
 
 def update_config_from_environment(config: dict[str, Any]) -> None:
     """
@@ -48,16 +53,11 @@ def update_config_from_environment(config: dict[str, Any]) -> None:
 
     :param config: The dict to update.
     """
+    import pdb; pdb.set_trace()
     config.update(dict(loader() for loader in CONFIG_LOADERS))
-
 
 def update_config_from_secrets(config: dict[str, Any]) -> None:
     """
     Update an existing config with values from the secrets store.
-
-    :param config: The config dict to update.
     """
-    try:
-        config.update(dict(loader() for loader in SECRETS_LOADERS))
-    except Exception as e:
-        raise SecretsManagerException(message="Error loading secrets", cause=e) from e
+    config.update(dict(loader() for loader in SECRETS_LOADERS))
