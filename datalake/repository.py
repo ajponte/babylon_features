@@ -56,15 +56,15 @@ class TransactionDto:
 
 class BaseRepository:
     def __init__(self, collection, mapper):
-        self.collection = collection
-        self.mapper = mapper
+        self._collection = collection
+        self._mapper = mapper
 
     def get_by_id(self, _id: str) -> object | None:
-        doc = self.collection.find_one({"_id": ObjectId(_id)})
-        return self.mapper.to_domain(doc) if doc else None
+        doc = self._collection.find_one({"_id": ObjectId(_id)})
+        return self._mapper.to_domain(doc) if doc else None
 
     def get_all(self) -> list[object]:
-        return [self.mapper.to_domain(doc) for doc in self.collection.find({})]
+        return [self._mapper.to_domain(doc) for doc in self._collection.find({})]
 
 
 
