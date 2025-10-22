@@ -1,8 +1,8 @@
 """
 Datalake records repository pattern
 """
-from datetime import date
 
+from datetime import date
 from pymongo.collection import Collection
 from bson import ObjectId
 
@@ -10,6 +10,7 @@ from features_pipeline.error import RAGError
 from features_pipeline.utils import convert_string_to_date, convert_date_to_string
 
 DEFAULT_DATE_STRING_FORMAT = "%m/%d/%Y"
+
 
 class TransactionDto:
     def __init__(
@@ -79,30 +80,35 @@ class BaseRepository:
         self._collection = collection
         self._mapper = mapper
 
-    def get_by_id(self, _id: str) -> object | None:
+    def get_by_id(self, _id: str) -> TransactionDto | None:
         doc = self._collection.find_one({"_id": ObjectId(_id)})
         return self._mapper.to_domain(doc) if doc else None
 
-    def get_all(self) -> list[object]:
+    def get_all(self) -> list[TransactionDto]:
         return [self._mapper.to_domain(doc) for doc in self._collection.find({})]
 
-    def get_by_filter(self, filter_criteria: dict) -> list[object]:
+    def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
         return [self._mapper.to_domain(doc) for doc in self._collection.find(filter_criteria)]
+
+    @property
+    def collection(self):
+        return self._collection
 
 
 class TransactionRepository(BaseRepository):
     def __init__(self, collection: Collection):
         super().__init__(collection=collection, mapper=TransactionMapper)
 
-    @property
-    def collection(self):
-        return self._collection
-
-    def get_by_id(self, transaction_id: str) -> list[TransactionDto]:
-        return self._collection.find_one({"_id": ObjectId(transaction_id)})
+    def get_by_id(self, transaction_id: str) -> TransactionDto | None:
+        doc = self._collection.find_one({"_id": ObjectId(transaction_id)})
+        return self._mapper.to_domain(doc) if doc else None
 
     def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
-        return [self._mapper.to_domain(doc) for doc in self._collection.find(filter_criteria)]
+        return [
+            self._mapper.to_domain(doc)
+            for doc in
+            (self._collection.find(filter_criteria) or [])
+        ]
 
 class TransactionMapper:
     @staticmethod
@@ -114,8 +120,8 @@ class TransactionMapper:
             record_id=str(doc["_id"]),
             amount=doc["Amount"],
             posting_date=convert_string_to_date(
-                date_string=doc['PostingDate'],
-                format_string=date_string_format
+                date_string=doc['PostingDate'], # type: ignore
+                format_string=date_string_format # type: ignore
             ),
             description=doc["Description"],
             details=doc['Details'],
@@ -134,7 +140,7 @@ class TransactionMapper:
             "Amount": transaction.amount,
             "PostingDate": convert_date_to_string(
                 date_obj=transaction.posting_date,
-                format_string=date_string_format
+                format_string=date_string_format  # type: ignore
             ),
             "Description": transaction.description,
             "Details": transaction.details,

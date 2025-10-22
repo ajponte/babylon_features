@@ -52,7 +52,7 @@ class CollectionProcessor(DataLakeProcessor):
     and store embeddings in the vector store.
     """
 
-    def process(self, mongo_repository: TransactionRepository) -> None:
+    def process(self, mongo_repository: BaseRepository) -> None:
         """
         Process data in the mongo repo, embed the data,
         and persist in the vector store.
@@ -61,7 +61,7 @@ class CollectionProcessor(DataLakeProcessor):
         """
         self.__update_batch_number()
         collection_name = mongo_repository.collection.name
-        transactions: list[TransactionDto] = mongo_repository.get_by_filter({})
+        transactions = mongo_repository.get_by_filter({})
         # The langchain docs we want to vectorize.
         documents: list[Document] = []
         for transaction in transactions:
@@ -69,7 +69,8 @@ class CollectionProcessor(DataLakeProcessor):
                 documents.extend(
                     [
                         build_langchain_document(
-                            source=transaction, collection=collection_name
+                            source=transaction,
+                            collection=collection_name
                         )
                     ]
                 )
