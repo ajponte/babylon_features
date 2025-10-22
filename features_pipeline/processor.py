@@ -69,8 +69,7 @@ class CollectionProcessor(DataLakeProcessor):
                 documents.extend(
                     [
                         build_langchain_document(
-                            source=transaction,
-                            collection=collection_name
+                            source=transaction, collection=collection_name
                         )
                     ]
                 )
