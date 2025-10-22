@@ -12,7 +12,7 @@ from datalake.repository import TransactionRepository
 from datalake.uow import UnitOfWork
 from features_pipeline.logger import get_logger
 from features_pipeline.processor import CollectionProcessor
-from features_pipeline.rag.vectorstore import ChromaVectorStore
+from features_pipeline.vectorstore import ChromaVectorStore
 
 
 _LOGGER = get_logger()
@@ -115,7 +115,7 @@ class Daemon:
                 )
                 self._processor.process(
                     # Create a new TransactionRepository record for each collection we found.
-                    transaction_repository=TransactionRepository(transactions_collection)
+                    mongo_repository=TransactionRepository(transactions_collection)
                 )
                 _LOGGER.debug(f'Finished invoking processor for {collection_name}')
 

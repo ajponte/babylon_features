@@ -9,7 +9,7 @@ from sklearn.manifold import TSNE
 import plotly.graph_objects as go
 
 from features_pipeline.logger import get_logger
-from features_pipeline.rag.vectorstore import ChromaVectorStore
+from features_pipeline.vectorstore import ChromaVectorStore
 
 
 _LOGGER = get_logger()
