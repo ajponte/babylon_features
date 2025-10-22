@@ -4,10 +4,10 @@ from abc import ABC, abstractmethod
 
 from langchain_core.documents import Document
 
-from datalake.repository import TransactionRepository, BaseRepository, TransactionDto
+from datalake.repository import BaseRepository
 from features_pipeline.logger import get_logger
 from features_pipeline.rag.documents.document_builder import build_langchain_document
-from features_pipeline.rag.vectorstore import VectorStore
+from features_pipeline.vectorstore import VectorStore
 
 _LOGGER = get_logger()
 
