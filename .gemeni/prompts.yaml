@@ -1,0 +1,13 @@
+# Gemini Agent Prompts
+
+# This file stores the prompts that the agent will use.
+
+prompts:
+  - name: default_greeting
+    text: "Hello! How can I assist you today?"
+
+  - name: task_confirmation
+    text: "Please confirm the following task: {task_description}"
+
+  - name: error_response
+    text: "An error occurred while processing your request: {error_message}"
