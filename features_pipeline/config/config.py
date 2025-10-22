@@ -9,7 +9,13 @@ from features_pipeline.config.configuration_loaders import (
     optional,
     to_int,
 )
-from features_pipeline.config.hashicorp import SecretsManagerException, BaoSecretsManager
+
+# todo: https://github.com/ajponte/babylon/issues/36
+# pylint: disable=unused-import
+from features_pipeline.config.hashicorp import (
+    SecretsManagerException,
+    BaoSecretsManager,
+)
 
 DEFAULT_CONNECTION_TIMEOUT_SECONDS = "30"
 
@@ -33,7 +39,7 @@ CONFIG_LOADERS: list[Loader] = [
     optional(key="EMBEDDING_MODEL", default_val="BAAI/bge-small-en-v1.5"),
     optional(key="CHROMA_SQLITE_DIR", default_val="./chromadb"),
     # A way to mark only a specific subset of collections to process for the daemon.
-    optional(key='DATALAKE_COLLECTION_PREFIX', default_val='chase-data-')
+    optional(key="DATALAKE_COLLECTION_PREFIX", default_val="chase-data-"),
 ]
 
 SECRETS_LOADERS: list[Loader] = [
@@ -45,9 +51,13 @@ SECRETS_LOADERS: list[Loader] = [
 
 
 def update_config(config: dict[str, Any]) -> None:
-    import pdb; pdb.set_trace()
+    """
+    Update the input config mapping with values from
+    first the os environment, and then the secrets manager.
+    """
     update_config_from_environment(config)
     update_config_from_secrets(config)
+
 
 def update_config_from_environment(config: dict[str, Any]) -> None:
     """
@@ -55,8 +65,8 @@ def update_config_from_environment(config: dict[str, Any]) -> None:
 
     :param config: The dict to update.
     """
-    import pdb; pdb.set_trace()
     config.update(dict(loader() for loader in CONFIG_LOADERS))
+
 
 def update_config_from_secrets(config: dict[str, Any]) -> None:
     """

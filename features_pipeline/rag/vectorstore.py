@@ -82,8 +82,7 @@ class ChromaVectorStore(VectorStore):
         """
         super().__init__(model)
         self._chroma_api_client: Chroma = self.__configure_chroma(
-            sqlite_dir=sqlite_dir,
-            collection_name=collection
+            sqlite_dir=sqlite_dir, collection_name=collection
         )
 
     @property
@@ -131,10 +130,7 @@ class ChromaVectorStore(VectorStore):
             _LOGGER.debug(f"Failed query: {query_text}")
             raise VectorDBError(message=message, cause=e) from e
 
-    def __configure_chroma(
-            self, sqlite_dir: str,
-            collection_name: str
-    ) -> Chroma:
+    def __configure_chroma(self, sqlite_dir: str, collection_name: str) -> Chroma:
         """
         Return a newly configured Chroma.
 

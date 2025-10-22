@@ -38,7 +38,7 @@ def build_langchain_document(source: TransactionDto, collection: str) -> Documen
             # Convert back to raw dict for metadata cleanup.
             source=TransactionMapper.to_document(source),
             source_id=str(source_id),
-            collection=collection
+            collection=collection,
         ),
         id=langchain_id,
     )

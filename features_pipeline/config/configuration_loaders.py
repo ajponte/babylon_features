@@ -179,6 +179,7 @@ def required_secret(
     path = path or os.environ["OPENBAO_SECRETS_PATH"]
 
     secrets_manager = BaoSecretsManager()
+
     def loader() -> tuple[str, Any]:
         return key, get_secret_value(
             key=key, path=path, converter=converter, secrets_manager=secrets_manager
