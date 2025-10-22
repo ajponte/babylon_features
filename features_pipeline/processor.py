@@ -81,6 +81,7 @@ class CollectionProcessor(DataLakeProcessor):
 
         self._vector_store.add_documents(documents)
 
+
     def __update_batch_number(self) -> None:
         """Update the current batch number."""
         _LOGGER.info(f"Bumping up batch number to {self._batch_number}")
