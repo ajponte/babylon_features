@@ -6,11 +6,11 @@ from typing import Any, Union, Callable
 from features_pipeline.config.hashicorp import BaoSecretsManager
 
 # Generic function to convert a string key to another type.
-type Converter = Callable[[str], Any]
+Converter = Callable[[str], Any]
 
 # Generic callable takes as input a function
 # of no arguments, and return a tuple.
-type Loader = Callable[[], tuple[str, Any]]
+Loader = Callable[[], tuple[str, Any]]
 
 
 # Custom domain-level exceptions.

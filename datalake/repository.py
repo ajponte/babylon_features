@@ -6,6 +6,7 @@ from datetime import date
 from pymongo.collection import Collection
 from bson import ObjectId
 
+from features_pipeline.error import RAGError
 from features_pipeline.utils import convert_string_to_date, convert_date_to_string
 
 DEFAULT_DATE_STRING_FORMAT = "%d/%m/%Y"
@@ -28,6 +29,9 @@ class TransactionDto:
         self._tx_type = tx_type
         self._description = description
         self._check_num = check_num
+
+        # Quick validation
+        self.__check_required_fields()
 
     @property
     def id(self) -> str:
@@ -54,8 +58,21 @@ class TransactionDto:
         return self._tx_type
 
     @property
-    def check_num(self) -> str:
+    def check_num(self) -> str | None:
         return self._check_num
+
+    def __str__(self):
+        return (
+            f"(id, {self.id}, ",
+            f"(amount, {self.amount}), ",
+            f"(posting_date, {self.posting_date})"
+        )
+
+
+    def __check_required_fields(self) -> None:
+        if not all([self.id, self.posting_date, self.description, self.details]):
+            message = f'Not all required fields are present for DTO'
+            raise RAGError(message)
 
 class BaseRepository:
     def __init__(self, collection: Collection, mapper):
@@ -81,7 +98,7 @@ class TransactionRepository(BaseRepository):
     def collection(self):
         return self._collection
 
-    def get_by_id(self, transaction_id: str) -> dict | None:
+    def get_by_id(self, transaction_id: str) -> list[TransactionDto]:
         return self._collection.find_one({"_id": ObjectId(transaction_id)})
 
     def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:

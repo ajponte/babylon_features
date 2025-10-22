@@ -25,7 +25,7 @@ _LOGGER = get_logger()
 #
 # WLOG, a "score" of a document is the distance/magnitude
 # of an input query and the document, as embedded by a given model.
-type SimilarEmbeddingRecord = tuple[Document, float]
+SimilarEmbeddingRecord = tuple[Document, float]
 
 
 class VectorStore(ABC):
