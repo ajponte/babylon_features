@@ -5,6 +5,11 @@ Feature &amp; RAG generation for Babylon
 The pipeline depends on a mongo data source. Data for babylon is loaded via
 the [Data Loader Go Routine](https://github.com/ajponte/babylon_data_loader)
 
+## Daemon
+The script `daemon.py` can be used to instantiate a new daemon process.
+The script was designed in a way such that it loads required configurations
+from the running environment (ie in a Docker container).
+
 ## Package Management
 ### Poetry
 This project uses `poetry` for package management.
