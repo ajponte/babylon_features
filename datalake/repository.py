@@ -1,18 +1,21 @@
 """
 Datalake records repository pattern
 """
-from datetime import datetime
+from datetime import date
 
-from typing import Any
 from pymongo.collection import Collection
 from bson import ObjectId
+
+from features_pipeline.utils import convert_string_to_date, convert_date_to_string
+
+DEFAULT_DATE_STRING_FORMAT = "%d/%m/%Y"
 
 class TransactionDto:
     def __init__(
         self,
         record_id: str,
         amount: float,
-        posting_date: datetime,
+        posting_date: date,
         details: str,
         tx_type: str,
         description: str,
@@ -35,7 +38,7 @@ class TransactionDto:
         return self._amount
 
     @property
-    def posting_date(self) -> datetime:
+    def posting_date(self) -> date:
         return self._posting_date
 
     @property
@@ -55,7 +58,7 @@ class TransactionDto:
         return self._check_num
 
 class BaseRepository:
-    def __init__(self, collection, mapper):
+    def __init__(self, collection: Collection, mapper):
         self._collection = collection
         self._mapper = mapper
 
@@ -66,25 +69,37 @@ class BaseRepository:
     def get_all(self) -> list[object]:
         return [self._mapper.to_domain(doc) for doc in self._collection.find({})]
 
+    def get_by_filter(self, filter_criteria: dict) -> list[object]:
+        return [self._mapper.to_domain(doc) for doc in self._collection.find(filter_criteria)]
 
 
 class TransactionRepository(BaseRepository):
     def __init__(self, collection: Collection):
         super().__init__(collection=collection, mapper=TransactionMapper)
 
+    @property
+    def collection(self):
+        return self._collection
+
     def get_by_id(self, transaction_id: str) -> dict | None:
         return self._collection.find_one({"_id": ObjectId(transaction_id)})
 
-    def get_all(self) -> list[dict]:
-        return list(self._collection.find({}))
+    def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
+        return [self._mapper.to_domain(doc) for doc in self._collection.find(filter_criteria)]
 
 class TransactionMapper:
     @staticmethod
-    def to_domain(doc: dict) -> TransactionDto:
+    def to_domain(
+        doc: dict,
+        date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT
+    ) -> TransactionDto:
         return TransactionDto(
             record_id=str(doc["_id"]),
             amount=doc["Amount"],
-            posting_date=_date_from_record(doc['PostingDate']),
+            posting_date=convert_string_to_date(
+                date_string=doc['PostingDate'],
+                format_string=date_string_format
+            ),
             description=doc["Description"],
             details=doc['Details'],
             tx_type=doc['Type'],
@@ -92,33 +107,19 @@ class TransactionMapper:
         )
 
     @staticmethod
-    def to_document(transaction: TransactionDto) -> dict:
+    def to_document(
+            transaction: TransactionDto,
+            date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT
+    ) -> dict:
         return {
             "_id": ObjectId(transaction.id),
             "Amount": transaction.amount,
-            "PostingDate": _from_datetime(transaction.posting_date),
+            "PostingDate": convert_date_to_string(
+                date_obj=transaction.posting_date,
+                format_string=date_string_format
+            ),
             "Description": transaction.description,
             "Details": transaction.details,
             "Type": transaction.transaction_type,
             "CheckOrSlipNum": transaction.check_num
         }
-
-def _date_from_record(date_str: str) -> datetime:
-    """
-    Return a python datetime format from the input string.
-
-    :param date_str: The date string iso-formatted.
-    :return: Python dt object.
-    """
-    return datetime.fromisoformat(date_str)
-
-def _from_datetime(date_obj: datetime) -> str:
-    """
-    Convert a python datetime object to a string in the format
-    which the data lake record understands.
-
-    :param date_obj: dt object.
-    :return: Date formatted as a string.
-    """
-    return date_obj.strftime("%d/%m/%Y")
-

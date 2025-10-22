@@ -3,12 +3,10 @@ Data visualization tools.
 """
 from enum import StrEnum
 
-import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 from sklearn.manifold import TSNE
 import plotly.graph_objects as go
-from sympy.strategies.core import switch
 
 from features_pipeline.logger import get_logger
 from features_pipeline.rag.vectorstore import ChromaVectorStore
@@ -18,7 +16,7 @@ _LOGGER = get_logger()
 
 DEFAULT_EMBEDDING_MODEL = 'BAAI/bge-small-en-v1.5'
 DEFAULT_CHROMA_SQLITE_DIR = './chromadb'
-DEFAULT_EMBEDDINGS_COLLECTION_CHROMA = 'babylon_vector_collection'
+DEFAULT_EMBEDDINGS_COLLECTION_CHROMA = 'babylon_vectors'
 
 # DEFAULT_METADATA_KEYS = {
 #     "source_collection": collection,
@@ -114,7 +112,6 @@ def get_all_embeddings(collection):
     """
     _LOGGER.info(f'Fetching ALL data from collection {collection.name}')
     # Fetches all data (limit=None) and includes all necessary fields
-    # We remove the pdb.set_trace() as it halts execution
     results = collection.get(
         ids=collection.get()['ids'], # A way to get all IDs
         include=["embeddings", "documents", "metadatas"]
@@ -145,7 +142,7 @@ def create_scatter_plot(
         vectors: NDArray,
         chart_type: ChartType,
         doc_types: list,
-        documents: list, # Changed from NDArray to list as documents is list of strings
+        documents: list,
         colors: list | None = None
 ):
     """
@@ -177,7 +174,7 @@ def create_scatter_plot(
 def _generate_scatter_plot_3d(
         vectors: NDArray,
         doc_types: list,
-        documents: list,  # Changed from NDArray to list as documents is list of strings
+        documents: list,
         colors: list | None = None
 ):
     tsne = TSNE(n_components=3, random_state=42)
@@ -208,7 +205,7 @@ def _generate_scatter_plot_3d(
 def _generate_scatter_plot_2d(
         vectors: NDArray,
         doc_types: list,
-        documents: list,  # Changed from NDArray to list as documents is list of strings
+        documents: list,
         colors: list | None = None
 ):
     # Reduce vectors to 2d
@@ -245,17 +242,13 @@ def main():
     """
     Main entry point to initialize and visualize vector store.
     """
-    config = {
-        'EMBEDDINGS_MODEL': DEFAULT_EMBEDDING_MODEL,
-        'CHROMA_SQLITE_DIR': DEFAULT_CHROMA_SQLITE_DIR,
-        'EMBEDDINGS_COLLECTION_CHROMA': DEFAULT_EMBEDDINGS_COLLECTION_CHROMA
-    }
 
-    # Create 2d scatter plot
+    # Create 3d scatter plot
     visualize_vector_store(
         ChromaVectorStore(
             model=DEFAULT_EMBEDDING_MODEL,
-            config=config
+            sqlite_dir=DEFAULT_CHROMA_SQLITE_DIR,
+            collection=DEFAULT_EMBEDDINGS_COLLECTION_CHROMA
         ),
         chart_type=ChartType.SCATTER_PLOT_3D
     )

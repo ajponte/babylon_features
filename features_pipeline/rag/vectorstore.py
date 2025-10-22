@@ -74,15 +74,17 @@ class ChromaVectorStore(VectorStore):
     as its persistence layer.
     """
 
-    def __init__(self, model: str, config: dict):
+    def __init__(self, model: str, sqlite_dir: str, collection: str):
         """
         Constructor.
 
         :param model: Target model.
-        :param config: Chroma config.
         """
         super().__init__(model)
-        self._chroma_api_client: Chroma = self.__configure_chroma(config)
+        self._chroma_api_client: Chroma = self.__configure_chroma(
+            sqlite_dir=sqlite_dir,
+            collection_name=collection
+        )
 
     @property
     def db_client(self) -> Chroma:
@@ -129,15 +131,15 @@ class ChromaVectorStore(VectorStore):
             _LOGGER.debug(f"Failed query: {query_text}")
             raise VectorDBError(message=message, cause=e) from e
 
-    def __configure_chroma(self, config: dict) -> Chroma:
+    def __configure_chroma(
+            self, sqlite_dir: str,
+            collection_name: str
+    ) -> Chroma:
         """
         Return a newly configured Chroma.
 
-        :param config: Config dict.
         :return: Chroma.
         """
-        collection_name = config["EMBEDDINGS_COLLECTION_CHROMA"]
-        sqlite_dir = config["CHROMA_SQLITE_DIR"]
 
         try:
             return Chroma(

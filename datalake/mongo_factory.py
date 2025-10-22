@@ -35,6 +35,20 @@ class MongoClientFactory:
         client = cls.get_client()
         return client[db_name][coll_name]
 
+    @classmethod
+    def list_collections(cls, db_name: str, prefix: str | None = None) -> Any:
+        client = cls.get_client()
+        collections = client[db_name].list_collections()
+        if not prefix:
+            return [col['name'] for col in collections]
+
+        filtered = [
+            col['name']
+            for col in collections
+            if col['name'].startswith(prefix)
+        ]
+        return filtered
+
 
 def _configure_mongo_client(config: dict):
     """Return a configured `MongoClient`."""

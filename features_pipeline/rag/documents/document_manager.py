@@ -15,7 +15,7 @@ from features_pipeline.datalake import Datalake
 from features_pipeline.error import RAGError
 from features_pipeline.logger import get_logger
 from features_pipeline.rag.documents.document_builder import build_langchain_document
-from features_pipeline.rag.vectorstore import ChromaVectorStore
+from features_pipeline.rag.vectorstore import ChromaVectorStore, VectorStore
 
 logging.basicConfig(level="DEBUG")
 
@@ -79,11 +79,11 @@ class RagCollection:
         """Remove all documents from the internal collection."""
         self.documents = []
 
-    def vectorize(self, model: str, model_config: dict[str, Any]) -> None:
+    def vectorize(self, vector_store: VectorStore) -> None:
         """
         Vectorize and persist the documents in the vectorStore.
         """
-        vector_store = ChromaVectorStore(model=model, config=model_config)
+        # vector_store = ChromaVectorStore(model=model, config=model_config)
 
         if not self.documents:
             _LOGGER.warning(
