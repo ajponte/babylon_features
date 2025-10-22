@@ -1,0 +1,32 @@
+# Gemini Agent Configuration
+
+# This file contains the main configuration for the Gemini agent.
+
+# Agent settings
+agent:
+  # The name of the agent
+  name: babylon-agent
+  # The version of the agent
+  version: 0.1.0
+  # The description of the agent
+  description: A helpful assistant for the babylon_features project.
+
+# Logging settings
+logging:
+  # The log level for the agent. Can be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: INFO
+  # The file to write logs to.
+  file: /var/log/babylon-agent.log
+
+# Security settings
+security:
+  # A list of allowed domains for the agent to access.
+  allowed_domains:
+    - api.example.com
+
+  # A list of blocked domains for the agent to access.
+  blocked_domains:
+    - evil.com
+
+  # Whether to enable sandboxing for the agent.
+  sandboxing: true

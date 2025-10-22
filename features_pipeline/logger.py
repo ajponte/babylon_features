@@ -21,4 +21,12 @@ def get_logger(propagate: bool = False, level: str = "DEBUG"):
     )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+    set_pymongo_logger()
     return logger
+
+
+def set_pymongo_logger(level: str | None = None):
+    """Fetch the `pymongo` logger and configure it."""
+    # Get the pymongo logger
+    pymongo_logger = logging.getLogger("pymongo")
+    pymongo_logger.setLevel(level or logging.WARNING)

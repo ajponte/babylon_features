@@ -1,6 +1,6 @@
 import pytest
 
-from features_pipeline.config.confload import to_bool, to_int
+from features_pipeline.config.configuration_loaders import to_bool, to_int
 
 
 @pytest.mark.parametrize(

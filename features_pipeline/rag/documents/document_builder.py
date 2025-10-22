@@ -2,6 +2,7 @@
 
 from langchain_core.documents import Document
 
+from datalake.repository import TransactionDto, TransactionMapper
 from features_pipeline.logger import get_logger
 from features_pipeline.utils import create_random_uuid_hex
 
@@ -9,7 +10,7 @@ from features_pipeline.utils import create_random_uuid_hex
 _LOGGER = get_logger()
 
 
-def build_langchain_document(source, collection: str) -> Document:
+def build_langchain_document(source: TransactionDto, collection: str) -> Document:
     """
     Build and return a langchain document.
 
@@ -20,7 +21,7 @@ def build_langchain_document(source, collection: str) -> Document:
     # The ID of the source record. We remove this
     # so that it's not part of the new doc content.
     # However, we will add it to metadata.
-    source_id = source.pop("_id", None)
+    source_id = source.id
     langchain_id = None
     if source_id is not None:
         # Crucial fix: convert the ObjectId (or any non-string ID) to a string
@@ -34,23 +35,26 @@ def build_langchain_document(source, collection: str) -> Document:
     return Document(
         page_content=build_document_content(source, collection=collection),
         metadata=build_document_metadata(
-            source=source, source_id=str(source_id), collection=collection
+            # Convert back to raw dict for metadata cleanup.
+            source=TransactionMapper.to_document(source),
+            source_id=str(source_id),
+            collection=collection,
         ),
         id=langchain_id,
     )
 
 
-def build_document_content(source: dict, collection: str) -> str:
+def build_document_content(source: TransactionDto, collection: str) -> str:
     """
     Convert transaction data into a concise, readable text chunk.
     (Function content remains as you provided)
     """
     _LOGGER.info(f"Building RAG document for collection {collection}")
     content = (
-        f"On {source.get('PostingDate', 'N/A')}, a transaction occurred with details: "
-        f"Description: {source.get('Description', 'N/A')}. "
-        f"Amount: ${source.get('Amount', 0.0):.2f}. "
-        f"Type: {source.get('Type', 'N/A')}."
+        f"On {source.posting_date}, a transaction occurred with details: "
+        f"Description: {source.description}. "
+        f"Amount: ${source.amount:.2f}. "
+        f"Type: {source.transaction_type}."
     )
     return content
 
@@ -69,7 +73,6 @@ def build_document_metadata(
     :return: Metadata as a dict of simple types.
     """
     _LOGGER.info(f"Building RAG metadata for collection {collection}")
-
     # 1. Start with explicit metadata fields
     metadata = {
         "source_collection": collection,

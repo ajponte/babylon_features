@@ -1,0 +1,32 @@
+# Gemini Agent Commands
+
+# This file defines the commands that the agent can execute.
+
+commands:
+  - name: list_files
+    description: Lists the files in a directory.
+    parameters:
+      - name: path
+        type: string
+        description: The path to the directory to list.
+        required: true
+
+  - name: read_file
+    description: Reads the contents of a file.
+    parameters:
+      - name: path
+        type: string
+        description: The path to the file to read.
+        required: true
+
+  - name: write_file
+    description: Writes to a file.
+    parameters:
+      - name: path
+        type: string
+        description: The path to the file to write to.
+        required: true
+      - name: content
+        type: string
+        description: The content to write to the file.
+        required: true

@@ -1,6 +1,15 @@
 # babylon_features
 Feature &amp; RAG generation for Babylon
 
+## Data Lake
+The pipeline depends on a mongo data source. Data for babylon is loaded via
+the [Data Loader Go Routine](https://github.com/ajponte/babylon_data_loader)
+
+## Daemon
+The script `daemon.py` can be used to instantiate a new daemon process.
+The script was designed in a way such that it loads required configurations
+from the running environment (ie in a Docker container).
+
 ## Package Management
 ### Poetry
 This project uses `poetry` for package management.
@@ -59,3 +68,11 @@ See `visualize.ChartType` for supported charts.
 ![image](scatterplot2d.png)
 
 ![image](scatterplot3d.png)
+
+# Gemini Agent Configuration
+
+The `gemeni` directory contains the configuration files for the Gemini agent.
+
+- `config.yaml`: Main configuration for the agent.
+- `commands.yaml`: Defines the commands that the agent can execute.
+- `prompts.yaml`: Stores the prompts that the agent will use.

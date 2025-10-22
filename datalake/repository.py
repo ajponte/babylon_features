@@ -1,0 +1,149 @@
+"""
+Datalake records repository pattern
+"""
+
+from datetime import date
+from pymongo.collection import Collection
+from bson import ObjectId
+
+from features_pipeline.error import RAGError
+from features_pipeline.utils import convert_string_to_date, convert_date_to_string
+
+DEFAULT_DATE_STRING_FORMAT = "%m/%d/%Y"
+
+
+class TransactionDto:
+    def __init__(
+        self,
+        record_id: str,
+        amount: float,
+        posting_date: date,
+        details: str,
+        tx_type: str,
+        description: str,
+        check_num: str | None = ""
+    ):
+        self._record_id = record_id
+        self._amount = amount
+        self._posting_date = posting_date
+        self._details = details
+        self._tx_type = tx_type
+        self._description = description
+        self._check_num = check_num
+
+        # Quick validation
+        self.__check_required_fields()
+
+    @property
+    def id(self) -> str:
+        return self._record_id
+
+    @property
+    def amount(self) -> float:
+        return self._amount
+
+    @property
+    def posting_date(self) -> date:
+        return self._posting_date
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @property
+    def details(self) -> str:
+        return self._details
+
+    @property
+    def transaction_type(self) -> str:
+        return self._tx_type
+
+    @property
+    def check_num(self) -> str | None:
+        return self._check_num
+
+    def __str__(self):
+        return (
+            f"(id, {self.id}, ",
+            f"(amount, {self.amount}), ",
+            f"(posting_date, {self.posting_date})"
+        )
+
+
+    def __check_required_fields(self) -> None:
+        if not all([self.id, self.posting_date, self.description, self.details]):
+            message = f'Not all required fields are present for DTO'
+            raise RAGError(message)
+
+class BaseRepository:
+    def __init__(self, collection: Collection, mapper):
+        self._collection = collection
+        self._mapper = mapper
+
+    def get_by_id(self, _id: str) -> TransactionDto | None:
+        doc = self._collection.find_one({"_id": ObjectId(_id)})
+        return self._mapper.to_domain(doc) if doc else None
+
+    def get_all(self) -> list[TransactionDto]:
+        return [self._mapper.to_domain(doc) for doc in self._collection.find({})]
+
+    def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
+        return [self._mapper.to_domain(doc) for doc in self._collection.find(filter_criteria)]
+
+    @property
+    def collection(self):
+        return self._collection
+
+
+class TransactionRepository(BaseRepository):
+    def __init__(self, collection: Collection):
+        super().__init__(collection=collection, mapper=TransactionMapper)
+
+    def get_by_id(self, transaction_id: str) -> TransactionDto | None:
+        doc = self._collection.find_one({"_id": ObjectId(transaction_id)})
+        return self._mapper.to_domain(doc) if doc else None
+
+    def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
+        return [
+            self._mapper.to_domain(doc)
+            for doc in
+            (self._collection.find(filter_criteria) or [])
+        ]
+
+class TransactionMapper:
+    @staticmethod
+    def to_domain(
+        doc: dict,
+        date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT
+    ) -> TransactionDto:
+        return TransactionDto(
+            record_id=str(doc["_id"]),
+            amount=doc["Amount"],
+            posting_date=convert_string_to_date(
+                date_string=doc['PostingDate'], # type: ignore
+                format_string=date_string_format # type: ignore
+            ),
+            description=doc["Description"],
+            details=doc['Details'],
+            tx_type=doc['Type'],
+            # Optional
+            check_num=doc.get('CheckOrSlipNum', None)
+        )
+
+    @staticmethod
+    def to_document(
+            transaction: TransactionDto,
+            date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT
+    ) -> dict:
+        return {
+            "_id": ObjectId(transaction.id),
+            "Amount": transaction.amount,
+            "PostingDate": convert_date_to_string(
+                date_obj=transaction.posting_date,
+                format_string=date_string_format  # type: ignore
+            ),
+            "Description": transaction.description,
+            "Details": transaction.details,
+            "Type": transaction.transaction_type,
+            "CheckOrSlipNum": transaction.check_num
+        }
