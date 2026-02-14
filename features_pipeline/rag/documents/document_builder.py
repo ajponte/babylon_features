@@ -6,7 +6,6 @@ from datalake.repository import TransactionDto, TransactionMapper
 from features_pipeline.logger import get_logger
 from features_pipeline.utils import create_random_uuid_hex
 
-
 _LOGGER = get_logger()
 
 

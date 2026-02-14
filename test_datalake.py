@@ -6,8 +6,8 @@ DATALAKE_DB_NAME = "babylonDataLake"
 
 DATALAKE_HOST = 'localhost'
 DATALAKE_PORT = 27017
-DALAKE_USER = ''
-DATALAKE_PASS = ''
+DALAKE_USER = 'admin'
+DATALAKE_PASS = 'password'
 DEFAULT_TIMEOUT_SECONDS = 30
 
 def main():

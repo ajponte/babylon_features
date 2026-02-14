@@ -140,13 +140,13 @@ if __name__ == "__main__":
         'CHROMA_SQLITE_DIR': DEFAULT_CHROMA_SQLITE_DIR
     }
 
-    my_daemon = Daemon(config)
+    _daemon = Daemon(config)
 
     # 3. Run the daemon
     # This will block the main thread until you press Ctrl+C
     try:
-        my_daemon.run()
+        _daemon.run()
     except KeyboardInterrupt:
         _LOGGER.info("Caught KeyboardInterrupt, stopping daemon...")
-        my_daemon.stop()
+        _daemon.stop()
         # The loop will finish its current iteration and then exit
