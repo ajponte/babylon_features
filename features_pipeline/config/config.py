@@ -39,7 +39,9 @@ CONFIG_LOADERS: list[Loader] = [
     optional(key="EMBEDDING_MODEL", default_val="BAAI/bge-small-en-v1.5"),
     optional(key="CHROMA_SQLITE_DIR", default_val="./chromadb"),
     # A way to mark only a specific subset of collections to process for the daemon.
-    optional(key="DATALAKE_COLLECTION_PREFIX", default_val="chase-data-"),
+    optional(key="DATALAKE_COLLECTION_PREFIX", default_val="transactions_"),
+
+    optional(key='HF_HOME', default_val='./hf_cache')
 ]
 
 SECRETS_LOADERS: list[Loader] = [

@@ -7,9 +7,13 @@ of high dimensionality.
 """
 
 from abc import ABC, abstractmethod
+import chromadb
+from chromadb.config import Settings
+from chromadb.utils import embedding_functions
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
+import os
 
 from features_pipeline.error import VectorDBError
 from features_pipeline.logger import get_logger
@@ -74,26 +78,42 @@ class ChromaVectorStore(VectorStore):
     as its persistence layer.
     """
 
-    def __init__(self, model: str, sqlite_dir: str, collection: str):
+    def __init__(
+        self,
+        model: str,
+        collection: str,
+        sqlite_dir: str | None = None,
+        host: str | None = None,
+        port: int | None = None,
+    ):
         """
         Constructor.
 
         :param model: Target model.
         """
         super().__init__(model)
-        self._chroma_api_client: Chroma = self.__configure_chroma(
-            sqlite_dir=sqlite_dir, collection_name=collection
+        self._chroma_api_client, self._chroma_native_client = self.__configure_chroma(
+            sqlite_dir=sqlite_dir, collection_name=collection, host=host, port=port
         )
 
     @property
     def db_client(self) -> Chroma:
         """
-        Return Chroma DB client.
+        Return Langchain Chroma DB client.
 
-        :return: Chroma DB client.
+        :return: Langchain Chroma DB client.
         """
         return self._chroma_api_client
 
+    @property
+    def native_client(self) -> chromadb.Client:
+        """
+        Return the native chromadb client.
+
+        :return: The native chromadb client.
+        """
+        return self._chroma_native_client
+        
     def add_documents(self, documents: list[Document]) -> None:
         """Add langchain documents to chroma."""
         _LOGGER.info("Adding documents to vector DB")
@@ -130,22 +150,53 @@ class ChromaVectorStore(VectorStore):
             _LOGGER.debug(f"Failed query: {query_text}")
             raise VectorDBError(message=message, cause=e) from e
 
-    def __configure_chroma(self, sqlite_dir: str, collection_name: str) -> Chroma:
+    def __configure_chroma(
+        self,
+        sqlite_dir: str | None,
+        collection_name: str,
+        host: str | None,
+        port: int | None,
+    ) -> tuple[Chroma, chromadb.Client]:
         """
-        Return a newly configured Chroma.
+        Return a newly configured Chroma client and the underlying native client.
 
-        :return: Chroma.
+        :return: A tuple of (Chroma, chromadb.Client).
         """
-
+        _LOGGER.info(f"Attempting to connect to Chroma with sqlite_dir='{sqlite_dir}', host='{host}', port='{port}'")
         try:
-            return Chroma(
-                collection_name=collection_name,
-                embedding_function=self.model,
-                persist_directory=sqlite_dir,
-            )
+            if sqlite_dir:
+                _LOGGER.info(f"Connecting to Chroma using persist_directory: {sqlite_dir}")
+                chroma_langchain = Chroma(
+                    collection_name=collection_name,
+                    embedding_function=self.model,
+                    persist_directory=sqlite_dir,
+                )
+                return chroma_langchain, chroma_langchain._client
+            elif host and port:
+                _LOGGER.info(f"Connecting to remote Chroma server at {host}:{port} using chromadb.Client with Settings")
+                settings = Settings(
+                    chroma_server_host=host,
+                    chroma_server_http_port=str(port),
+                )
+                chroma_native_client = chromadb.Client(settings=settings)
+                chroma_langchain = Chroma(
+                    collection_name=collection_name,
+                    embedding_function=self.model,
+                    client=chroma_native_client,
+                )
+                return chroma_langchain, chroma_native_client
+            else:
+                _LOGGER.warning("No sqlite_dir or host/port provided. Connecting to in-memory Chroma.")
+                # For in-memory, a native client is not explicitly created first,
+                # but the Langchain Chroma object creates one internally.
+                chroma_langchain = Chroma(
+                    collection_name=collection_name,
+                    embedding_function=self.model,
+                )
+                return chroma_langchain, chroma_langchain._client
         except Exception as e:
-            message = "Failed to connect to Chroma on disk"
-            _LOGGER.exception("Failed to connect to Chroma on disk")
+            message = "Failed to connect to Chroma"
+            _LOGGER.exception(message)
             raise VectorDBError(message, cause=e) from e
 
 
@@ -160,6 +211,10 @@ def embeddings(model: str, device: str = "cpu") -> HuggingFaceEmbeddings:
     match model:
         case "BAAI/bge-small-en-v1.5":
             _LOGGER.info(f"Instantiating HuggingFaceEmbeddings with model {model}")
+            # Check if TOKENIZERS_PARALLELISM is set, if not, set it to false to avoid warnings
+            if os.environ.get("TOKENIZERS_PARALLELISM") is None:
+                _LOGGER.warning("TOKENIZERS_PARALLELISM not set, setting to 'false' to suppress warnings.")
+                os.environ["TOKENIZERS_PARALLELISM"] = "false"
             embedding_model = HuggingFaceEmbeddings(
                 model_name=model,
                 model_kwargs={"device": device},

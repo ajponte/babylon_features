@@ -57,11 +57,16 @@ def _configure_mongo_client(config: dict):
     user: str = config['MONGO_DB_USER']
     passwd: str = config['MONGO_DB_PASSWORD']
     connection_timeout_seconds: int = config['MONGO_CONNECTION_TIMEOUT_SECONDS']
-    uri = f'{host}:{port}'
+    
+    # Construct the full MongoDB URI
+    # If user/passwd are empty, pymongo handles it by connecting without authentication
+    if user and passwd:
+        uri = f'mongodb://{user}:{passwd}@{host}:{port}/'
+    else:
+        uri = f'mongodb://{host}:{port}/'
+
     return MongoClient(
         uri,
-        username=user,
-        password=passwd,
         connectTimeoutMS=connection_timeout_seconds * 1000,
         serverSelectionTimeoutMS=connection_timeout_seconds * 1000,
     )

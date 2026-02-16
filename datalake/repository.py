@@ -71,7 +71,7 @@ class TransactionDto:
 
 
     def __check_required_fields(self) -> None:
-        if not all([self.id, self.posting_date, self.description, self.details]):
+        if not all([self.id, self.posting_date]):
             message = f'Not all required fields are present for DTO'
             raise RAGError(message)
 
