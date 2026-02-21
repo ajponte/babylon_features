@@ -1,4 +1,5 @@
 """Step and methods for querying the Vector DB."""
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum
 

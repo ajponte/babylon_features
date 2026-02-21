@@ -10,17 +10,20 @@ from features.domain.data_category import DataCategory
 
 class DatasetType(Enum):
     """Represents the types of datasets the pipeline can generate."""
+
     INSTRUCTION = "instruction"
     PREFERENCE = "preference"
 
 
 class InstructDataset(BabylonVectorBasedDocument):
     """Represents an instruct dataset."""
+
     category: DataCategory
     samples: list[BabylonVectorBasedDocument]
 
     class Config:
         """Config for instruct dataset model."""
+
         category = DataCategory.INSTRUCT_DATASET
 
     @property
@@ -42,6 +45,7 @@ class InstructDataset(BabylonVectorBasedDocument):
 
 class TrainTestSplit(BabylonVectorBasedDocument):
     """Represents the training data split by test data."""
+
     train: dict
     test: dict
     test_split_size: float
@@ -69,33 +73,39 @@ class TrainTestSplit(BabylonVectorBasedDocument):
 
 class InstructTrainTestSplit(TrainTestSplit):
     """Represents the training dataset split by instruct."""
+
     train: dict[DataCategory, InstructDataset]
     test: dict[DataCategory, InstructDataset]
     test_split_size: float
 
     class Config:
         """Config for Instruct Train Split model."""
+
         category = DataCategory.INSTRUCT_DATASET
 
 
 class PreferenceDatasetSample(BabylonVectorBasedDocument):
     """Represents a sample from the Preference dataset."""
+
     instruction: str
     rejected: str
     chosen: str
 
     class Config:
         """Config for Sample Preference dataset model."""
+
         category = DataCategory.PREFERENCE_DATASET_SAMPLES
 
 
 class PreferenceDataset(BabylonVectorBasedDocument):
     """Represents the Preference dataset."""
+
     category: DataCategory
     samples: list[PreferenceDatasetSample]
 
     class Config:
         """Config for Preference dataset model."""
+
         category = DataCategory.PREFERENCE_DATASET
 
     @property
@@ -118,10 +128,12 @@ class PreferenceDataset(BabylonVectorBasedDocument):
 
 class PreferenceTrainTestSplit(TrainTestSplit):
     """Represents the preference training data split by test data."""
+
     train: dict[DataCategory, PreferenceDataset]
     test: dict[DataCategory, PreferenceDataset]
     test_split_size: float
 
     class Config:
         """Config for PreferenceTrainTestSplit model."""
+
         category = DataCategory.PREFERENCE_DATASET

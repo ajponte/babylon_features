@@ -7,6 +7,7 @@ unit-of-work-python-domain-driven-design-patterns-f07a675588ee"
 
 class UnitOfWork:
     """Unit of Work manager class."""
+
     def __init__(self, client):
         """Start a new unit of work instance."""
         self.session = client.start_session()

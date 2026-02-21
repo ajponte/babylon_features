@@ -1,9 +1,11 @@
 """Representations for the categories of data the pipeline handles."""
+
 from enum import StrEnum
 
 
 class DataCategory(StrEnum):
     """Represents the categories of data the pipeline handles."""
+
     PROMPT = "prompt"
     QUERIES = "queries"
 

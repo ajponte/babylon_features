@@ -16,6 +16,7 @@ DEFAULT_DATE_STRING_FORMAT = "%m/%d/%Y"
 
 class TransactionDto:
     """Transaction mapped DTO."""
+
     def __init__(
         self,
         record_id: str,
@@ -93,6 +94,7 @@ class TransactionDto:
 
 class BaseRepository:
     """Represents a Mongo Repository Collection."""
+
     def __init__(self, collection: Collection, mapper):
         """Constructor.
 
@@ -128,6 +130,7 @@ class BaseRepository:
 
 class TransactionRepository(BaseRepository):
     """Represents the transactions collection."""
+
     def __init__(self, collection: Collection):
         super().__init__(collection=collection, mapper=TransactionMapper)
 
@@ -145,6 +148,7 @@ class TransactionRepository(BaseRepository):
 
 class TransactionMapper:
     """Holds static methods for document conversion."""
+
     @staticmethod
     def to_domain(
         doc: dict, date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT

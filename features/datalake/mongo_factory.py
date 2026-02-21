@@ -1,4 +1,5 @@
 """Factory pattern for creating a mongo client."""
+
 from typing import Any
 
 from pymongo import MongoClient
@@ -6,6 +7,7 @@ from pymongo import MongoClient
 
 class MongoClientFactory:
     """Factory for creating new mongo clients."""
+
     _client = None
 
     @classmethod

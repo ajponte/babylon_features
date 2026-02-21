@@ -8,6 +8,7 @@ from features.domain.data_category import DataCategory
 
 class Prompt(BabylonVectorBasedDocument):
     """Represents an embedded Prompt document."""
+
     template: str
     input_variables: dict
     content: str
@@ -15,10 +16,12 @@ class Prompt(BabylonVectorBasedDocument):
 
     class Config:
         """Prompt document config."""
+
         category = DataCategory.PROMPT
 
 
 class GenerateDatasetSamplesPrompt(Prompt):
     """Represents an dataset samples Prompt document."""
+
     data_category: DataCategory
     document: CleanedDocument

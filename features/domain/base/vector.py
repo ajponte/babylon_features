@@ -1,4 +1,5 @@
 """DAOs for vectorized documents."""
+
 import abc
 import uuid
 
@@ -10,13 +11,16 @@ from qdrant_client.models import PointStruct, Record
 from features.logger import get_logger
 from features.vectorstore.vectorstore import VectorStore
 
-BabylonVectorDocument = TypeVar("BabylonVectorDocument", bound="BabylonVectorBasedDocument")
+BabylonVectorDocument = TypeVar(
+    "BabylonVectorDocument", bound="BabylonVectorBasedDocument"
+)
 
 _LOGGER = get_logger()
 
 
 class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.ABC):
     """Represents a Vectorized document in the Babylon domain."""
+
     _collection = "babylon_vectors"
 
     _id: UUID4 = Field(default_factory=uuid.uuid4)
@@ -39,7 +43,7 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
         cls: Type[BabylonVectorDocument], point: Record
     ) -> BabylonVectorDocument:
         """Convert a Qdrant Record to a compatible Babylon vectorized document."""
-        _point_id = UUID4(point.id, version=4) # pylint: disable=unexpected-keyword-arg
+        _point_id = UUID4(point.id, version=4)  # pylint: disable=unexpected-keyword-arg
         payload = point.payload or {}
 
         attrs = {"id": _point_id, **payload}
@@ -64,7 +68,7 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
                 query_vector=query_vector,
                 vector_store=vector_store,
                 imit=limit,
-                **kwargs
+                **kwargs,
             )
         except Exception as e:
             _LOGGER.debug(f"Error while searching documents: {e}")
