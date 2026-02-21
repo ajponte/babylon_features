@@ -31,7 +31,8 @@ def fetch_all_data() -> dict[str, list]:
     with ThreadPoolExecutor() as executor:
         # todo: Add more as needed.
         query_futures = {
-            executor.submit(__fetch_transactions): "transactions"
+            executor.submit(__fetch_transactions): "transactions",
+            executor.submit(__fetch_articles): "articles"
         }
 
         results = {}
@@ -49,6 +50,11 @@ def fetch_all_data() -> dict[str, list]:
 def __fetch_transactions() -> list[CleanedDocument]:
     """Fetch cleaned transaction documents from the Vector DB."""
     return __fetch(CleanedTransactionDocument)
+
+def __fetch_articles() -> list[CleanedDocument]:
+    """Fetch cleaned article documents from the Vector DB."""
+    # todo
+    return []
 
 def __fetch(cleaned_document_type: type[CleanedDocument], limit: int = 1) -> list[CleanedDocument]:
     """Fetch cleaned documents for the type."""

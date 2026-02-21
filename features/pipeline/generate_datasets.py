@@ -18,4 +18,8 @@ def dataset_generation(
 ) -> None:
     """Entry point for generating datasets."""
     _LOGGER.info("Invoking Generate Datasets Pipeline.")
-    cleaned_documents = cd_steps
+    cleaned_documents = cd_steps.query_feature_store(after=wait_for)
+    prompts = cd_steps.create_prompts(documents=cleaned_documents, dataset_type=dataset_type)
+
+    if dataset_type == DatasetType.INSTRUCTION:
+        dataset = cd_steps
