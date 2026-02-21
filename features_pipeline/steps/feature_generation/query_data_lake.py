@@ -15,6 +15,6 @@ def query_data_lake(
 
     :param transaction_descriptions: Optional list of
     """
-    documents = []
+    documents: list = []
     # todo
     return documents

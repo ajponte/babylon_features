@@ -14,6 +14,6 @@ def clean_documents(
     documents: Annotated[list, "raw_documents"],
 ) -> Annotated[list, "cleaned_documents"]:
     """Entry point to clean a list of datalake documents."""
-    cleaned_documents = []
+    cleaned_documents: list = []
     # todo
     return cleaned_documents

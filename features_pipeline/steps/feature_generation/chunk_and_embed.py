@@ -21,7 +21,7 @@ def chunk_and_embed(
         "num_documents": len(cleaned_documents),
     }
 
-    embedded_chunks = []
+    embedded_chunks: list = []
 
     # todo
     return embedded_chunks
