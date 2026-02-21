@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from langchain_core.documents import Document
-from features_pipeline.processor import CollectionProcessor
+from features.processor import CollectionProcessor
 
 @pytest.fixture
 def mock_vector_store():
@@ -28,8 +28,8 @@ def test_collection_processor_batch_number(mock_vector_store):
     processor.process(repo)
     assert processor.batch_number == 2
 
-@patch("features_pipeline.processor.build_langchain_document")
-@patch("features_pipeline.processor.RecursiveCharacterTextSplitter")
+@patch("features.processor.build_langchain_document")
+@patch("features.processor.RecursiveCharacterTextSplitter")
 def test_collection_processor_process_success(
     mock_splitter_class, 
     mock_build_doc, 
@@ -60,7 +60,7 @@ def test_collection_processor_process_success(
     mock_vector_store.add_documents.assert_called_once_with([mock_chunk])
     assert processor.batch_number == 1
 
-@patch("features_pipeline.processor.build_langchain_document")
+@patch("features.processor.build_langchain_document")
 def test_collection_processor_process_skip_error(
     mock_build_doc, 
     mock_vector_store, 

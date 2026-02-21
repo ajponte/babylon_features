@@ -1,4 +1,4 @@
-from features_pipeline.steps.feature_generation.load_vectors import load_to_vector_db
+from features.steps.feature_generation.load_vectors import load_to_vector_db
 
 def test_load_to_vector_db():
     """Test the load_to_vector_db step."""

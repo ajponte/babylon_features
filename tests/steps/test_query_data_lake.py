@@ -1,4 +1,4 @@
-from features_pipeline.steps.feature_generation.query_data_lake import query_data_lake
+from features.steps.feature_generation.query_data_lake import query_data_lake
 
 def test_query_data_lake():
     """Test the query_data_lake step."""

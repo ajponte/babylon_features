@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from features_pipeline.config.configuration_loaders import (
+from features.config.configuration_loaders import (
     Loader,
     required,
     required_secret,
@@ -12,7 +12,7 @@ from features_pipeline.config.configuration_loaders import (
 
 # todo: https://github.com/ajponte/babylon/issues/36
 # pylint: disable=unused-import
-from features_pipeline.config.hashicorp import (
+from features.config.hashicorp import (
     SecretsManagerException,
     BaoSecretsManager,
 )

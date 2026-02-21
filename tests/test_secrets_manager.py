@@ -1,6 +1,4 @@
-
-import features_pipeline.config.hashicorp as MUT
-from pytest import fixture
+import features.config.hashicorp as MUT
 from unittest.mock import ANY
 
 # Mock secrets to be used in tests

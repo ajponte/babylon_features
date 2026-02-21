@@ -2,7 +2,7 @@ from pytest import fixture
 import os
 from unittest.mock import patch
 
-from features_pipeline.config.hashicorp import OpenBaoApiClient
+from features.config.hashicorp import OpenBaoApiClient
 
 # The following environment variables are set here so they are
 # available for all fixtures, including session-scoped ones.
@@ -41,7 +41,7 @@ def hvac_client():
     Changed the scope to 'session' to match mock_bao_client.
     The patch is automatically started and stopped by pytest.
     """
-    with patch('features_pipeline.config.hashicorp.hvac.Client') as mock_client:
+    with patch('features.config.hashicorp.hvac.Client') as mock_client:
         yield mock_client
 
 @fixture(scope='session')

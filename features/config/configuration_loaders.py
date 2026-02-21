@@ -3,7 +3,7 @@
 import os
 from typing import Any, Union, Callable
 
-from features_pipeline.config.hashicorp import BaoSecretsManager
+from features.config.hashicorp import BaoSecretsManager
 
 # Generic function to convert a string key to another type.
 Converter = Callable[[str], Any]

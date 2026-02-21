@@ -4,7 +4,7 @@ from datetime import datetime, date
 
 import uuid
 
-from features_pipeline.logger import get_logger
+from features.logger import get_logger
 
 _LOGGER = get_logger()
 
