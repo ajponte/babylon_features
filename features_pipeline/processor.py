@@ -63,7 +63,7 @@ class CollectionProcessor(DataLakeProcessor):
         self.__update_batch_number()
         collection_name = mongo_repository.collection.name
         transactions = mongo_repository.get_by_filter({})
-        
+
         # Initialize text splitter for chunking.
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
