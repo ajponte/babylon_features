@@ -68,7 +68,13 @@ class VectorStore(ABC):
         """
 
     @abstractmethod
-    def bulk_find(self, collection_name: str, offset: str, limit: int, **kwargs) -> Any:
+    def bulk_find(
+        self,
+        collection_name: str,
+        limit: int,
+        offset: int | str | None,
+        **kwargs
+    ) -> Any:
         """
         Bulk-search the collection, starting at a specific `offset`.
 
@@ -79,7 +85,11 @@ class VectorStore(ABC):
 
     @abstractmethod
     def search_collection(
-        self, collection_name: str, query_vector: list, limit: int, **kwargs
+        self,
+        collection_name: str,
+        query_vector: list,
+        limit: int,
+        **kwargs
     ) -> list:
         """
         Search a Vectorstore collection.
@@ -174,7 +184,13 @@ class ChromaVectorStore(VectorStore):
     ) -> list:
         raise NotImplementedError("Not implemented for Chroma.")
 
-    def bulk_find(self, collection_name: str, offset: int, limit: int, **kwargs) -> Any:
+    def bulk_find(
+        self,
+        collection_name: str,
+        limit: int,
+        offset: int | str | None,
+        **kwargs
+    ) -> Any:
         raise NotImplementedError("Not implemented for Chroma")
 
     def get_all(self, limit: int = DEFAULT_MAX_VECTORS_SEARCH) -> dict[str, list]:
@@ -277,7 +293,7 @@ class QdrantVectorStore(VectorStore):
             raise VectorDBError(message=message, cause=e) from e
 
     def bulk_find(
-        self, collection_name: str, offset: int, limit: int, **kwargs
+        self, collection_name: str, limit: int, offset: int | str | None,  **kwargs
     ) -> tuple[list, str]:
         with_payload = kwargs.pop("with_payload", True)
         with_vectors = kwargs.pop("with_vectors", False)
@@ -291,7 +307,7 @@ class QdrantVectorStore(VectorStore):
             **kwargs,
         )
 
-        return records, next_offset
+        return records, next_offset  # type: ignore
 
     def search_collection(
         self,

@@ -5,7 +5,7 @@
 from zenml import pipeline
 
 from features.logger import get_logger
-from features.pipeline import generate_datasets
+from features.pipeline.generate_datasets import generate_datasets
 
 _LOGGER = get_logger()
 
@@ -20,6 +20,12 @@ def end_to_end_data(
     """Entry point to run the e22 data pipeline."""
     # todo
     _LOGGER.info("Invoking End to End Data Pipeline")
-    wait_for_ids = []
+    wait_for_ids: list[str] = []
 
-    generate_datasets()
+    generate_datasets(  # type: ignore
+        test_split_size=text_split_size,
+        push_to_hugging_face=push_to_hugging_face,
+        dataset_id=dataset_id,
+        mock=mock,
+        wait_for=wait_for_ids[0] if wait_for_ids else None
+    )

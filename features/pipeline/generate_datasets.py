@@ -8,14 +8,14 @@
 from zenml import pipeline
 
 from features.domain.dataset import DatasetType
-from features.steps import dataset_generation as cd_steps
+from features.steps import dataset_generation as gen_steps
 from features.logger import get_logger
 
 _LOGGER = get_logger()
 
 
 @pipeline
-def dataset_generation(
+def generate_datasets(
     dataset_type: DatasetType = DatasetType.INSTRUCTION,
     test_split_size: float = 0.1,
     push_to_hugging_face: bool = False,
@@ -25,13 +25,13 @@ def dataset_generation(
 ) -> None:
     """Entry point for generating datasets."""
     _LOGGER.info("Invoking Generate Datasets Pipeline.")
-    cleaned_documents = cd_steps.query_feature_store(after=wait_for)
-    prompts = cd_steps.create_prompts(
+    cleaned_documents = gen_steps.query_feature_store(after=wait_for)  # type: ignore
+    prompts = gen_steps.create_prompts(  # type: ignore
         documents=cleaned_documents, dataset_type=dataset_type
     )
 
     if dataset_type == DatasetType.INSTRUCTION:
-        dataset = cd_steps.generate_instruction_dataset(
+        dataset = gen_steps.generate_instruction_dataset(  # type: ignore
             prompts=prompts, test_split_size=test_split_size, mock=mock
         )
     elif dataset_type == DatasetType.PREFERENCE:
@@ -41,4 +41,4 @@ def dataset_generation(
         raise ValueError(f"Invalid dataset type: {dataset_type}")
 
     if push_to_hugging_face:
-        cd_steps.push_to_huggingface(dataset=dataset, dataset_id=dataset_id)
+        gen_steps.push_to_huggingface(dataset=dataset, dataset_id=dataset_id)  # type: ignore

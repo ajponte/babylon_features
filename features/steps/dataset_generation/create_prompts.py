@@ -17,3 +17,7 @@ def create_prompts(
     """Entry point for Prompt Generation Step."""
 
     # todo
+    samples: list[GenerateDatasetSamplesPrompt] = []
+    ret: dict[DataCategory, list[GenerateDatasetSamplesPrompt]] = {}
+    ret.update({DataCategory.PROMPT: samples})
+    return ret

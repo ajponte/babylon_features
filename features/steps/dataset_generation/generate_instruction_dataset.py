@@ -26,3 +26,4 @@ def generate_instruction_dataset(
     """Entry point for creating instruct datasets."""
     # todo
     _LOGGER.info("Starting Instruct Dataset Generation.")
+    return InstructTrainTestSplit(train=[], test=[])  # type: ignore

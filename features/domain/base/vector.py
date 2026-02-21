@@ -25,6 +25,11 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
 
     _id: UUID4 = Field(default_factory=uuid.uuid4)
 
+    @property
+    def id(self) -> UUID4:
+        """Return the document ID."""
+        return self._id
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
             return False
@@ -43,13 +48,15 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
         cls: Type[BabylonVectorDocument], point: Record
     ) -> BabylonVectorDocument:
         """Convert a Qdrant Record to a compatible Babylon vectorized document."""
-        _point_id = UUID4(point.id, version=4)  # pylint: disable=unexpected-keyword-arg
+        # Ensure point.id is a string for UUID conversion
+        point_id_str = str(point.id)
+        _point_id = UUID4(point_id_str, version=4) # pylint: disable=unexpected-keyword-arg
         payload = point.payload or {}
 
         attrs = {"id": _point_id, **payload}
 
         # Update internal embeddings.
-        if cls._has_class_attrs("embedding"):
+        if cls._has_class_attrs("embedding"):  # type: ignore
             attrs["embedding"] = point.vector or None
 
         return cls(**attrs)
@@ -87,9 +94,11 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
         **kwargs,
     ) -> tuple[list[BabylonVectorDocument], uuid.UUID | None]:
         """Execute a bulk find of vector documents."""
+        offset = kwargs.pop("offset", None)
+        offset = str(offset) if offset else None
         try:
             documents, next_offset = cls._bulk_find(
-                vectorstore=vectorstore, limit=limit, **kwargs
+                vectorstore=vectorstore, limit=limit, offset=offset
             )
         except Exception as e:
             message = f"Failed to search documents in '{cls.get_collection_name()}'."
@@ -108,19 +117,18 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
     def _bulk_find(
         cls: Type[BabylonVectorDocument],
         vectorstore: VectorStore,
+        offset: str | None = None,
         limit: int = 10,
-        **kwargs,
+        **kwargs
     ) -> tuple[list[BabylonVectorDocument], uuid.UUID | None]:
         collection_name = cls.get_collection_name()
 
-        offset = kwargs.pop("offset", None)
-        offset = str(offset) if offset else None
 
         records, next_offset = vectorstore.bulk_find(
             collection_name=collection_name, offset=offset, limit=limit, **kwargs
         )
 
-        documents = [cls.from_record(record) for record in records]
+        documents = [cls.from_record(record) for record in records]  # type: ignore
 
         if next_offset is not None:
             next_offset = uuid.UUID(next_offset, version=4)
@@ -149,7 +157,7 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
             with_vectors=with_vectors,
             **kwargs,
         )
-        return [cls.from_record(record) for record in records]
+        return [cls.from_record(record) for record in records]  # type: ignore
 
     def to_point(self: BabylonVectorDocument, **kwargs) -> PointStruct:
         """Convert a vector document to an embedded point."""
@@ -172,6 +180,6 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
         """Return the dictionary representation of this model."""
         dict_ = super().model_dump(**kwargs)
 
-        dict_ = self._uuid_to_str(dict_)
+        dict_ = self._uuid_to_str(dict_)  # type: ignore
 
         return dict_

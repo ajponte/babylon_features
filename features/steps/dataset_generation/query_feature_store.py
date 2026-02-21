@@ -74,7 +74,8 @@ def __fetch(
 ) -> list[CleanedDocument]:
     """Fetch cleaned documents for the type."""
     try:
-        cleaned_documents, next_offset = cleaned_document_type.bulk_find(limit=limit)
+        cleaned_documents, next_offset = (
+            cleaned_document_type.bulk_find(limit=limit))  # type: ignore
     except Exception as e:
         _LOGGER.debug(
             f"Encountered exception while fetching cleaned documents. Error: {e}"
@@ -84,7 +85,7 @@ def __fetch(
     while next_offset:
         documents, next_offset = cleaned_document_type.bulk_find(
             limit=limit, offset=next_offset, **kwargs
-        )
+        )  # type: ignore
         cleaned_documents.extend(documents)
 
     return cleaned_documents
