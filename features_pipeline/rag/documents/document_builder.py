@@ -68,7 +68,7 @@ def build_document_metadata(
 
     :param source: Data source mapping (Note: '_id' has already been popped).
     :param collection: Name of collection.
-    :param source_id: Id of the source data record (must be a str).
+    :param source_id: ID of the source data record (must be a str).
     :return: Metadata as a dict of simple types.
     """
     _LOGGER.info(f"Building RAG metadata for collection {collection}")

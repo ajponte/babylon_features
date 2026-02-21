@@ -1,6 +1,10 @@
+# pylint: disable=unused-argument
+"""Pipeline step for generating features."""
+
 from zenml import pipeline
 
 from features_pipeline.steps import feature_generation as fg_steps
+
 
 @pipeline
 def generate_features(wait_for: str | list[str] | None = None) -> list[str]:
@@ -16,4 +20,5 @@ def generate_features(wait_for: str | list[str] | None = None) -> list[str]:
     # Load embedded chunks to vector db.
     last_step_2 = fg_steps.load_to_vector_db(embedded_documents)
 
+    # pylint: disable=no-member
     return [last_step_1.invocation_id, last_step_2.invocation_id]

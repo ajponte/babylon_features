@@ -1,10 +1,14 @@
+# pylint: disable=unused-variable
+# pylint: disable=unused-argument
 """Step for loading cleaned vectors to the vector store."""
+
 from typing import Annotated
 from zenml import step
 
 from features_pipeline.logger import get_logger
 
 _LOGGER = get_logger()
+
 
 @step
 def load_to_vector_db(
