@@ -51,10 +51,7 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
         # Ensure point.id is a string for UUID conversion
         point_id_str = str(point.id)
         # pylint: disable=unexpected-keyword-arg
-        _point_id = UUID4(
-            point_id_str,
-            version=4
-        )
+        _point_id = UUID4(point_id_str, version=4)
         payload = point.payload or {}
 
         attrs = {"id": _point_id, **payload}
