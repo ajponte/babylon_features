@@ -6,13 +6,15 @@ Daemon script. This script, upon a defined interval, will:
 from typing import Any
 
 import time
+from dotenv import load_dotenv
 
 from datalake.mongo_factory import MongoClientFactory
 from datalake.repository import TransactionRepository
 from datalake.uow import UnitOfWork
 from features_pipeline.logger import get_logger
 from features_pipeline.processor import CollectionProcessor
-from features_pipeline.vectorstore import ChromaVectorStore
+from features_pipeline.vectorstore import vector_store_factory
+from features_pipeline.config.config import update_config
 
 
 _LOGGER = get_logger()
@@ -21,7 +23,7 @@ _LOGGER = get_logger()
 DEFAULT_BAO_ADDR = "http://127.0.0.1:8200"
 DEFAULT_BAO_VAULT_TOKEN = "dev-only-token"
 DEFAULT_OPENBAO_SECRETS_PATH = "test"
-DEFAULT_MONGO_DATA_LAKE_NAME = "babylonDataLake"
+DEFAULT_MONGO_DATA_LAKE_NAME = "datalake"
 DEFAULT_EMBEDDINGS_COLLECTION_CHROMA = "babylon_vectors"
 # 5 minutes
 DEFAULT_MIN_LOOP_SECONDS = 300
@@ -29,10 +31,15 @@ DEFAULT_DATALAKE_COLLECTION_PREFIX = ""
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 DEFAULT_CHROMA_SQLITE_DIR = ""
 
+DEFAULT_QDRANT_HOST = "localhost"
+DEFAULT_QDRANT_PORT = 6333
+DEFAULT_QDRANT_COLLECTION = "babylon_vectors"
+DEFAULT_VECTOR_DB_TYPE = "qdrant"
+
 DEFAULT_DATALAKE_HOST = 'localhost'
 DEFAULT_DATALAKE_PORT = 27017
-DEFAULT_DALAKE_USER = ''
-DEFAULT_DATALAKE_PASS = ''
+DEFAULT_DALAKE_USER = 'babylon'
+DEFAULT_DATALAKE_PASS = 'babylonpass'
 DEFAULT_TIMEOUT_SECONDS = 30
 
 class Daemon:
@@ -46,11 +53,7 @@ class Daemon:
     # def __init__(self, processor, min_loop_seconds):
     def __init__(self, daemon_config: dict[str, Any]):
         self._processor = CollectionProcessor(
-            ChromaVectorStore(
-                model=str(daemon_config['EMBEDDING_MODEL']),
-                collection=str(daemon_config['EMBEDDINGS_COLLECTION_CHROMA']),
-                sqlite_dir=str(daemon_config['CHROMA_SQLITE_DIR'])
-            )
+            vector_store_factory(daemon_config)
         )
         self._mongo_client = MongoClientFactory.get_client(config=daemon_config)
         self._mongo_db_name = daemon_config['MONGO_DATA_LAKE_NAME']
@@ -104,14 +107,16 @@ class Daemon:
         with UnitOfWork(self._mongo_client) as session:
             colls = MongoClientFactory.list_collections(
                 db_name=self._mongo_db_name,
-                prefix=self._collection_prefix
+                prefix=self._collection_prefix,
+                client=self._mongo_client
             )
             _LOGGER.info(f'Found {len(colls)} collections in the data lake to process')
             for collection_name in colls:
                 _LOGGER.debug(f"Invoking processor for {collection_name}")
                 transactions_collection = MongoClientFactory.get_collection(
                     db_name=self._mongo_db_name,
-                    coll_name=collection_name
+                    coll_name=collection_name,
+                    client=self._mongo_client
                 )
                 self._processor.process(
                     # Create a new TransactionRepository record for each collection we found.
@@ -121,8 +126,10 @@ class Daemon:
 
 
 if __name__ == "__main__":
-    # todo: load from environment.
-    # Holding off until https://github.com/ajponte/babylon/issues/36
+    # Load .env file if it exists, override system env vars
+    load_dotenv(override=True)
+
+    # Default config as a starting point.
     config = {
         "BAO_ADDR": DEFAULT_BAO_ADDR,
         "BAO_VAULT_TOKEN": DEFAULT_BAO_VAULT_TOKEN,
@@ -137,8 +144,19 @@ if __name__ == "__main__":
         "MONGO_CONNECTION_TIMEOUT_SECONDS": DEFAULT_TIMEOUT_SECONDS,
         'DATALAKE_COLLECTION_PREFIX': DEFAULT_DATALAKE_COLLECTION_PREFIX,
         'EMBEDDING_MODEL': DEFAULT_EMBEDDING_MODEL,
-        'CHROMA_SQLITE_DIR': DEFAULT_CHROMA_SQLITE_DIR
+        'CHROMA_SQLITE_DIR': DEFAULT_CHROMA_SQLITE_DIR,
+        'VECTOR_DB_TYPE': DEFAULT_VECTOR_DB_TYPE,
+        'QDRANT_HOST': DEFAULT_QDRANT_HOST,
+        'QDRANT_PORT': DEFAULT_QDRANT_PORT,
+        'QDRANT_COLLECTION': DEFAULT_QDRANT_COLLECTION,
     }
+
+    # Attempt to update config from environment and secrets manager
+    try:
+        update_config(config)
+    except Exception as e:
+        _LOGGER.warning(f"Could not fully update config from environment/secrets: {e}")
+        _LOGGER.info("Proceeding with default/environment configuration.")
 
     my_daemon = Daemon(config)
 

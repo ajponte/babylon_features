@@ -176,13 +176,15 @@ def required_secret(
              the loader as a higher-order function, which when invoked will
              return the key, value pair as a Tuple.
     """
-    path = path or os.environ["OPENBAO_SECRETS_PATH"]
-
-    secrets_manager = BaoSecretsManager()
 
     def loader() -> tuple[str, Any]:
+        target_path = path or os.environ["OPENBAO_SECRETS_PATH"]
+        secrets_manager = BaoSecretsManager()
         return key, get_secret_value(
-            key=key, path=path, converter=converter, secrets_manager=secrets_manager
+            key=key,
+            path=target_path,
+            converter=converter,
+            secrets_manager=secrets_manager,
         )
 
     return loader

@@ -3,7 +3,7 @@
 import logging
 from langchain_core.documents import Document
 
-from features_pipeline.rag.vectorstore import ChromaVectorStore
+from features_pipeline.vectorstore import ChromaVectorStore
 
 logging.basicConfig(level='DEBUG')
 

@@ -24,21 +24,24 @@ class MongoClientFactory:
         return cls._client
 
     @classmethod
-    def get_collection(cls, db_name: str, coll_name: str):
+    def get_collection(cls, db_name: str, coll_name: str, client: MongoClient | None = None):
         """
         Return an iterator to all items in the collection.
 
         :param db_name: DL DB name.
         :param coll_name: DL collection.
+        :param client: (Optional) MongoClient instance.
         :return: Collection iterator.
         """
-        client = cls.get_client()
+        if not client:
+            client = cls.get_client()
         return client[db_name][coll_name]
 
     @classmethod
-    def list_collections(cls, db_name: str, prefix: str | None = None) -> Any:
-        client = cls.get_client()
-        collections = client[db_name].list_collections()
+    def list_collections(cls, db_name: str, prefix: str | None = None, client: MongoClient | None = None) -> Any:
+        if not client:
+            client = cls.get_client()
+        collections = list(client[db_name].list_collections())
         if not prefix:
             return [col['name'] for col in collections]
 

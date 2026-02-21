@@ -85,10 +85,12 @@ class BaseRepository:
         return self._mapper.to_domain(doc) if doc else None
 
     def get_all(self) -> list[TransactionDto]:
-        return [self._mapper.to_domain(doc) for doc in self._collection.find({})]
+        results = [self._mapper.to_domain(doc) for doc in self._collection.find({})]
+        return [r for r in results if r is not None]
 
     def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
-        return [self._mapper.to_domain(doc) for doc in self._collection.find(filter_criteria)]
+        results = [self._mapper.to_domain(doc) for doc in self._collection.find(filter_criteria)]
+        return [r for r in results if r is not None]
 
     @property
     def collection(self):
@@ -104,31 +106,33 @@ class TransactionRepository(BaseRepository):
         return self._mapper.to_domain(doc) if doc else None
 
     def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
-        return [
-            self._mapper.to_domain(doc)
-            for doc in
-            (self._collection.find(filter_criteria) or [])
-        ]
+        docs: list[dict] = list(self._collection.find(filter_criteria) or [])
+        results = [self._mapper.to_domain(doc) for doc in docs]
+        return [r for r in results if r is not None]
 
 class TransactionMapper:
     @staticmethod
     def to_domain(
         doc: dict,
         date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT
-    ) -> TransactionDto:
-        return TransactionDto(
-            record_id=str(doc["_id"]),
-            amount=doc["Amount"],
-            posting_date=convert_string_to_date(
-                date_string=doc['PostingDate'], # type: ignore
-                format_string=date_string_format # type: ignore
-            ),
-            description=doc["Description"],
-            details=doc['Details'],
-            tx_type=doc['Type'],
-            # Optional
-            check_num=doc.get('CheckOrSlipNum', None)
-        )
+    ) -> TransactionDto | None:
+        try:
+            return TransactionDto(
+                record_id=str(doc["_id"]),
+                amount=doc["Amount"],
+                posting_date=convert_string_to_date(
+                    date_string=doc['PostingDate'], # type: ignore
+                    format_string=date_string_format # type: ignore
+                ),
+                description=doc["Description"],
+                details=doc['Details'],
+                tx_type=doc['Type'],
+                # Optional
+                check_num=doc.get('CheckOrSlipNum', None)
+            )
+        except Exception as e:
+            # Skip invalid records.
+            return None
 
     @staticmethod
     def to_document(
