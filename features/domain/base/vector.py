@@ -1,20 +1,22 @@
+"""DAOs for vectorized documents."""
 import abc
 import uuid
 
+from typing_extensions import Generic, Type, TypeVar
 import numpy as np
 from pydantic import BaseModel, UUID4, Field
-from typing import Any, Callable, Dict, Generic, Type, TypeVar
-from qdrant_client.models import CollectionInfo, PointStruct, Record
+from qdrant_client.models import PointStruct, Record
 
 from features.logger import get_logger
-from features.vector_store.vectorstore import VectorStore
+from features.vectorstore.vectorstore import VectorStore
 
-BABYLON_VECTOR_DOCUMENT = TypeVar("BABYLON_VECTOR_DOCUMENT", bound="VectorBaseDocument")
+BabylonVectorDocument = TypeVar("BabylonVectorDocument", bound="BabylonVectorBasedDocument")
 
 _LOGGER = get_logger()
 
 
-class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], abc.ABC):
+class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.ABC):
+    """Represents a Vectorized document in the Babylon domain."""
     _collection = "babylon_vectors"
 
     _id: UUID4 = Field(default_factory=uuid.uuid4)
@@ -29,13 +31,15 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
 
     @classmethod
     def document_id(cls) -> UUID4:
+        """Return the document ID."""
         return cls._id
 
     @classmethod
     def from_record(
-        cls: Type[BABYLON_VECTOR_DOCUMENT], point: Record
-    ) -> BABYLON_VECTOR_DOCUMENT:
-        _point_id = UUID4(point.id, version=4)
+        cls: Type[BabylonVectorDocument], point: Record
+    ) -> BabylonVectorDocument:
+        """Convert a Qdrant Record to a compatible Babylon vectorized document."""
+        _point_id = UUID4(point.id, version=4) # pylint: disable=unexpected-keyword-arg
         payload = point.payload or {}
 
         attrs = {"id": _point_id, **payload}
@@ -48,15 +52,20 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
 
     @classmethod
     def search(
-        cls: Type[BABYLON_VECTOR_DOCUMENT],
+        cls: Type[BabylonVectorDocument],
         vector_store: VectorStore,
         query_vector: list,
         limit: int = 10,
         **kwargs,
-    ) -> list[BABYLON_VECTOR_DOCUMENT]:
+    ) -> list[BabylonVectorDocument]:
         """Execute a search query against the vector db."""
         try:
-            documents = cls._search(query_vector=query_vector, limit=limit, **kwargs)
+            documents = cls._search(
+                query_vector=query_vector,
+                vector_store=vector_store,
+                imit=limit,
+                **kwargs
+            )
         except Exception as e:
             _LOGGER.debug(f"Error while searching documents: {e}")
             _LOGGER.info(
@@ -68,11 +77,11 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
 
     @classmethod
     def bulk_find(
-        cls: Type[BABYLON_VECTOR_DOCUMENT],
+        cls: Type[BabylonVectorDocument],
         vectorstore: VectorStore,
         limit: int = 10,
         **kwargs,
-    ) -> tuple[list[BABYLON_VECTOR_DOCUMENT], uuid.UUID | None]:
+    ) -> tuple[list[BabylonVectorDocument], uuid.UUID | None]:
         """Execute a bulk find of vector documents."""
         try:
             documents, next_offset = cls._bulk_find(
@@ -80,7 +89,7 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
             )
         except Exception as e:
             message = f"Failed to search documents in '{cls.get_collection_name()}'."
-            _LOGGER.debug(message + f"\nError: {e}")
+            _LOGGER.debug(f"{message}\nError: {e}")
             _LOGGER.info(message)
             documents, next_offset = [], None
 
@@ -88,15 +97,16 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
 
     @classmethod
     def get_collection_name(cls) -> str:
+        """Return the name of the collection this document points to."""
         return cls._collection
 
     @classmethod
     def _bulk_find(
-        cls: Type[BABYLON_VECTOR_DOCUMENT],
+        cls: Type[BabylonVectorDocument],
         vectorstore: VectorStore,
         limit: int = 10,
         **kwargs,
-    ) -> tuple[list[BABYLON_VECTOR_DOCUMENT], uuid.UUID | None]:
+    ) -> tuple[list[BabylonVectorDocument], uuid.UUID | None]:
         collection_name = cls.get_collection_name()
 
         offset = kwargs.pop("offset", None)
@@ -114,15 +124,18 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
         return documents, next_offset
 
     @classmethod
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def _search(
-        cls: Type[BABYLON_VECTOR_DOCUMENT],
+        cls: Type[BabylonVectorDocument],
         vector_store: VectorStore,
         query_vector: list,
         limit: int = 10,
         with_payload: bool = True,
         with_vectors: bool = True,
         **kwargs,
-    ) -> list[BABYLON_VECTOR_DOCUMENT]:
+    ) -> list[BabylonVectorDocument]:
+        """Execute a search query on the vector DB."""
         collection_name = cls.get_collection_name()
         records: list[Record] = vector_store.search_collection(
             collection_name=collection_name,
@@ -134,7 +147,7 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
         )
         return [cls.from_record(record) for record in records]
 
-    def to_point(self: BABYLON_VECTOR_DOCUMENT, **kwargs) -> PointStruct:
+    def to_point(self: BabylonVectorDocument, **kwargs) -> PointStruct:
         """Convert a vector document to an embedded point."""
         exclude_unset = kwargs.pop("exclude_unset", False)
         by_alias = kwargs.pop("by_alias", True)
@@ -151,7 +164,7 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
 
         return PointStruct(id=_embedded_vector_id, vector=vector, payload=payload)
 
-    def model_dump(self: BABYLON_VECTOR_DOCUMENT, **kwargs) -> dict:
+    def model_dump(self: BabylonVectorDocument, **kwargs) -> dict:
         """Return the dictionary representation of this model."""
         dict_ = super().model_dump(**kwargs)
 

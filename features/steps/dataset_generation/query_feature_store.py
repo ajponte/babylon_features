@@ -1,3 +1,4 @@
+"""Step and methods for querying the Vector DB."""
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum
 
@@ -25,6 +26,7 @@ class Feature(Enum):
 
 @step
 def query_feature_store() -> Annotated[list, "queried_cleaned_documents"]:
+    """Return cleaned documents from the Vector DB."""
     _LOGGER.info("Querying feature store.")
     results = fetch_all_data()
     cleaned_documents = [
@@ -67,7 +69,7 @@ def __fetch_articles() -> list[CleanedDocument]:
 
 
 def __fetch(
-    cleaned_document_type: type[CleanedDocument], limit: int = 1
+    cleaned_document_type: type[CleanedDocument], limit: int = 1, **kwargs
 ) -> list[CleanedDocument]:
     """Fetch cleaned documents for the type."""
     try:
@@ -80,7 +82,7 @@ def __fetch(
 
     while next_offset:
         documents, next_offset = cleaned_document_type.bulk_find(
-            limit=limit, offset=next_offset
+            limit=limit, offset=next_offset, **kwargs
         )
         cleaned_documents.extend(documents)
 

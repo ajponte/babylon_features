@@ -1,3 +1,5 @@
+# pylint: disable=unused-argument
+"""Step for generating prompts."""
 from typing_extensions import Annotated
 
 from zenml import step
@@ -14,4 +16,4 @@ def create_prompts(
 ) -> Annotated[dict[DataCategory, list[GenerateDatasetSamplesPrompt]], "prompts"]:
     """Entry point for Prompt Generation Step."""
 
-    dataset_generator = generation
+    # todo

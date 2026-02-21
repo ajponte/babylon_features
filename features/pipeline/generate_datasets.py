@@ -1,5 +1,9 @@
 # pylint: disable=unused-variable
 # pylint: disable=unused-argument
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=not-callable
+# pylint: disable=inconsistent-return-statements
 """Pipeline step to generate datasets for the e2e data pipeline."""
 from zenml import pipeline
 

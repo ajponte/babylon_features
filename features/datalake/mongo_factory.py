@@ -1,9 +1,11 @@
+"""Factory pattern for creating a mongo client."""
 from typing import Any
 
 from pymongo import MongoClient
 
 
 class MongoClientFactory:
+    """Factory for creating new mongo clients."""
     _client = None
 
     @classmethod
@@ -41,6 +43,7 @@ class MongoClientFactory:
     def list_collections(
         cls, db_name: str, prefix: str | None = None, client: MongoClient | None = None
     ) -> Any:
+        """Return all collections."""
         if not client:
             client = cls.get_client()
         collections = list(client[db_name].list_collections())
