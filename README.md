@@ -60,6 +60,28 @@ pipeline, we will never rewrite files.
 ### Type Checking
 This project (somewhat) enforces static typing through `mypy`.
 
+## Vector Databases
+The pipeline supports multiple vector database technologies through a common `VectorStore` abstraction. Currently, **Chroma** and **Qdrant** are supported.
+
+### Configuration
+The choice of vector database is controlled by the `VECTOR_DB_TYPE` environment variable.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VECTOR_DB_TYPE` | Type of Vector DB (`chroma` or `qdrant`) | `chroma` |
+| `EMBEDDING_MODEL` | HuggingFace embedding model to use | `BAAI/bge-small-en-v1.5` |
+
+#### Chroma Settings
+Used when `VECTOR_DB_TYPE=chroma`.
+* `CHROMA_SQLITE_DIR`: Directory for SQLite persistence.
+* `EMBEDDINGS_COLLECTION_CHROMA`: Name of the Chroma collection.
+
+#### Qdrant Settings
+Used when `VECTOR_DB_TYPE=qdrant`.
+* `QDRANT_HOST`: Hostname of the Qdrant service.
+* `QDRANT_PORT`: Port of the Qdrant service (default: `6333`).
+* `QDRANT_COLLECTION`: Name of the Qdrant collection.
+
 ## Vectorstore Visualization
 Running `poetry run python visualize.py` will generate a 2d scatterplot
 of the vectors.

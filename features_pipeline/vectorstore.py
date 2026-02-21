@@ -11,6 +11,7 @@ from typing import Any
 from langchain_chroma import Chroma
 from langchain_qdrant import QdrantVectorStore as LangchainQdrant
 from qdrant_client import QdrantClient
+from qdrant_client.http import models as qmodels
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 
@@ -215,6 +216,16 @@ class QdrantVectorStore(VectorStore):
         """
         try:
             client = QdrantClient(url=f"http://{host}:{port}")
+            # Ensure collection exists
+            if not client.collection_exists(collection_name):
+                _LOGGER.info(f"Creating Qdrant collection: {collection_name}")
+                # bge-small-en-v1.5 has 384 dimensions
+                client.create_collection(
+                    collection_name=collection_name,
+                    vectors_config=qmodels.VectorParams(
+                        size=384, distance=qmodels.Distance.COSINE
+                    ),
+                )
             return LangchainQdrant(
                 client=client,
                 collection_name=collection_name,

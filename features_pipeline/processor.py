@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from datalake.repository import BaseRepository
 from features_pipeline.logger import get_logger
@@ -62,24 +63,35 @@ class CollectionProcessor(DataLakeProcessor):
         self.__update_batch_number()
         collection_name = mongo_repository.collection.name
         transactions = mongo_repository.get_by_filter({})
+        
+        # Initialize text splitter for chunking.
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=100,
+            add_start_index=True,
+        )
+
         # The langchain docs we want to vectorize.
-        documents: list[Document] = []
+        all_chunks: list[Document] = []
         for transaction in transactions:
             try:
-                documents.extend(
-                    [
-                        build_langchain_document(
-                            source=transaction, collection=collection_name
-                        )
-                    ]
+                doc = build_langchain_document(
+                    source=transaction, collection=collection_name
                 )
+                # Split the document into chunks.
+                chunks = text_splitter.split_documents([doc])
+                all_chunks.extend(chunks)
             except Exception as e:
-                message = f"Error while building langchain document for record {transaction.id}"
+                message = f"Error while building/chunking langchain document for record {transaction.id}"
                 _LOGGER.info(message)
                 _LOGGER.debug(f"Error: {e}")
                 continue
 
-        self._vector_store.add_documents(documents)
+        if all_chunks:
+            _LOGGER.info(f"Adding {len(all_chunks)} chunks to vector store")
+            self._vector_store.add_documents(all_chunks)
+        else:
+            _LOGGER.info("No documents to add to vector store")
 
     def __update_batch_number(self) -> None:
         """Update the current batch number."""
