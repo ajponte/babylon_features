@@ -2,7 +2,7 @@
 from typing_extensions import Any
 
 from features.domain.base.vector import BabylonVectorBasedDocument
-from features.domain.cleaned_document import CleanedDocument
+from features.domain.cleaned_documents import CleanedDocument
 from features.domain.data_category import DataCategory
 
 class Prompt(BabylonVectorBasedDocument):

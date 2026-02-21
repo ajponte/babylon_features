@@ -13,6 +13,7 @@ def dataset_generation(
     dataset_type: DatasetType = DatasetType.INSTRUCTION,
     test_split_size: float = 0.1,
     push_to_hugging_face: bool = False,
+    dataset_id: str | None = None,
     mock: bool = False,
     wait_for: str | list[str] | None = None
 ) -> None:
@@ -22,4 +23,14 @@ def dataset_generation(
     prompts = cd_steps.create_prompts(documents=cleaned_documents, dataset_type=dataset_type)
 
     if dataset_type == DatasetType.INSTRUCTION:
-        dataset = cd_steps
+        dataset = cd_steps.generate_instruction_dataset(
+            prompts=prompts, test_split_size=test_split_size, mock=mock
+        )
+    elif dataset_type == DatasetType.PREFERENCE:
+        _LOGGER.war(f'{DatasetType.PREFERENCE} not supported yet')
+        return None
+    else:
+        raise ValueError(f'Invalid dataset type: {dataset_type}')
+
+    if push_to_hugging_face:
+        cd_steps.push_to_huggingface(dataset=dataset, dataset_id=dataset_id)

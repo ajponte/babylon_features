@@ -54,3 +54,41 @@ class InstructTrainTestSplit(TrainTestSplit):
 
     class Config:
         category = DataCategory.INSTRUCT_DATASET
+
+class PreferenceDatasetSample(BabylonVectorBasedDocument):
+    instruction: str
+    rejected: str
+    chosen: str
+
+    class Config:
+        category = DataCategory.PREFERENCE_DATASET_SAMPLES
+
+class PreferenceDataset(BabylonVectorBasedDocument):
+    category: DataCategory
+    samples: list[PreferenceDatasetSample]
+
+    class Config:
+        category = DataCategory.PREFERENCE_DATASET
+
+    @property
+    def num_samples(self) -> int:
+        return len(self.samples)
+
+    def to_huggingface(self) -> "Dataset":
+        data = [sample.model_dump() for sample in self.samples]
+
+        return Dataset.from_dict(
+            {
+                "prompt": [d["instruction"] for d in data],
+                "rejected": [d["rejected"] for d in data],
+                "chosen": [d["chosen"] for d in data],
+            }
+        )
+
+class PreferenceTrainTestSplit(TrainTestSplit):
+    train: dict[DataCategory, PreferenceDataset]
+    test: dict[DataCategory, PreferenceDataset]
+    test_split_size: float
+
+    class Config:
+        category = DataCategory.PREFERENCE_DATASET
