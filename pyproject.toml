@@ -19,6 +19,7 @@ langchain-community = "^0.3.31"
 hvac = "2.3.0"
 sentence-transformers = "^5.1.1"
 langchain-qdrant = "0.2.0"
+python-dotenv = "^1.2.1"
 
 [tool.poetry.group.test.dependencies]
 black = "25.1.0"

@@ -6,6 +6,7 @@ Daemon script. This script, upon a defined interval, will:
 from typing import Any
 
 import time
+from dotenv import load_dotenv
 
 from datalake.mongo_factory import MongoClientFactory
 from datalake.repository import TransactionRepository
@@ -13,6 +14,7 @@ from datalake.uow import UnitOfWork
 from features_pipeline.logger import get_logger
 from features_pipeline.processor import CollectionProcessor
 from features_pipeline.vectorstore import vector_store_factory
+from features_pipeline.config.config import update_config
 
 
 _LOGGER = get_logger()
@@ -105,14 +107,16 @@ class Daemon:
         with UnitOfWork(self._mongo_client) as session:
             colls = MongoClientFactory.list_collections(
                 db_name=self._mongo_db_name,
-                prefix=self._collection_prefix
+                prefix=self._collection_prefix,
+                client=self._mongo_client
             )
             _LOGGER.info(f'Found {len(colls)} collections in the data lake to process')
             for collection_name in colls:
                 _LOGGER.debug(f"Invoking processor for {collection_name}")
                 transactions_collection = MongoClientFactory.get_collection(
                     db_name=self._mongo_db_name,
-                    coll_name=collection_name
+                    coll_name=collection_name,
+                    client=self._mongo_client
                 )
                 self._processor.process(
                     # Create a new TransactionRepository record for each collection we found.
@@ -122,8 +126,10 @@ class Daemon:
 
 
 if __name__ == "__main__":
-    # todo: load from environment.
-    # Holding off until https://github.com/ajponte/babylon/issues/36
+    # Load .env file if it exists, override system env vars
+    load_dotenv(override=True)
+
+    # Default config as a starting point.
     config = {
         "BAO_ADDR": DEFAULT_BAO_ADDR,
         "BAO_VAULT_TOKEN": DEFAULT_BAO_VAULT_TOKEN,
@@ -144,6 +150,13 @@ if __name__ == "__main__":
         'QDRANT_PORT': DEFAULT_QDRANT_PORT,
         'QDRANT_COLLECTION': DEFAULT_QDRANT_COLLECTION,
     }
+
+    # Attempt to update config from environment and secrets manager
+    try:
+        update_config(config)
+    except Exception as e:
+        _LOGGER.warning(f"Could not fully update config from environment/secrets: {e}")
+        _LOGGER.info("Proceeding with default/environment configuration.")
 
     my_daemon = Daemon(config)
 
