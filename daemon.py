@@ -12,7 +12,7 @@ from datalake.repository import TransactionRepository
 from datalake.uow import UnitOfWork
 from features_pipeline.logger import get_logger
 from features_pipeline.processor import CollectionProcessor
-from features_pipeline.vectorstore import ChromaVectorStore
+from features_pipeline.vectorstore import vector_store_factory
 
 
 _LOGGER = get_logger()
@@ -28,6 +28,11 @@ DEFAULT_MIN_LOOP_SECONDS = 300
 DEFAULT_DATALAKE_COLLECTION_PREFIX = ""
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 DEFAULT_CHROMA_SQLITE_DIR = ""
+
+DEFAULT_QDRANT_HOST = "localhost"
+DEFAULT_QDRANT_PORT = 6333
+DEFAULT_QDRANT_COLLECTION = "babylon_vectors"
+DEFAULT_VECTOR_DB_TYPE = "chroma"
 
 DEFAULT_DATALAKE_HOST = 'localhost'
 DEFAULT_DATALAKE_PORT = 27017
@@ -46,11 +51,7 @@ class Daemon:
     # def __init__(self, processor, min_loop_seconds):
     def __init__(self, daemon_config: dict[str, Any]):
         self._processor = CollectionProcessor(
-            ChromaVectorStore(
-                model=str(daemon_config['EMBEDDING_MODEL']),
-                collection=str(daemon_config['EMBEDDINGS_COLLECTION_CHROMA']),
-                sqlite_dir=str(daemon_config['CHROMA_SQLITE_DIR'])
-            )
+            vector_store_factory(daemon_config)
         )
         self._mongo_client = MongoClientFactory.get_client(config=daemon_config)
         self._mongo_db_name = daemon_config['MONGO_DATA_LAKE_NAME']
@@ -137,7 +138,11 @@ if __name__ == "__main__":
         "MONGO_CONNECTION_TIMEOUT_SECONDS": DEFAULT_TIMEOUT_SECONDS,
         'DATALAKE_COLLECTION_PREFIX': DEFAULT_DATALAKE_COLLECTION_PREFIX,
         'EMBEDDING_MODEL': DEFAULT_EMBEDDING_MODEL,
-        'CHROMA_SQLITE_DIR': DEFAULT_CHROMA_SQLITE_DIR
+        'CHROMA_SQLITE_DIR': DEFAULT_CHROMA_SQLITE_DIR,
+        'VECTOR_DB_TYPE': DEFAULT_VECTOR_DB_TYPE,
+        'QDRANT_HOST': DEFAULT_QDRANT_HOST,
+        'QDRANT_PORT': DEFAULT_QDRANT_PORT,
+        'QDRANT_COLLECTION': DEFAULT_QDRANT_COLLECTION,
     }
 
     my_daemon = Daemon(config)

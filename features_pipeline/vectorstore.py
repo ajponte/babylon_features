@@ -7,7 +7,10 @@ of high dimensionality.
 """
 
 from abc import ABC, abstractmethod
+from typing import Any
 from langchain_chroma import Chroma
+from langchain_qdrant import QdrantVectorStore as LangchainQdrant
+from qdrant_client import QdrantClient
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 
@@ -147,6 +150,108 @@ class ChromaVectorStore(VectorStore):
             message = "Failed to connect to Chroma on disk"
             _LOGGER.exception("Failed to connect to Chroma on disk")
             raise VectorDBError(message, cause=e) from e
+
+
+class QdrantVectorStore(VectorStore):
+    """
+    Qdrant Vector Store.
+    """
+
+    def __init__(self, model: str, host: str, port: int, collection: str):
+        """
+        Constructor.
+
+        :param model: Target model.
+        :param host: Qdrant host.
+        :param port: Qdrant port.
+        :param collection: Qdrant collection name.
+        """
+        super().__init__(model)
+        self._qdrant_client = self.__configure_qdrant(
+            host=host, port=port, collection_name=collection
+        )
+
+    def add_documents(self, documents: list[Document]) -> None:
+        """Add langchain documents to Qdrant."""
+        _LOGGER.info("Adding documents to Qdrant")
+        try:
+            self._qdrant_client.add_documents(documents)
+        except Exception as e:
+            message = "Error while adding documents to Qdrant"
+            _LOGGER.info(message)
+            raise VectorDBError(message=message, cause=e) from e
+
+    def similarity_search(
+        self, query_text, top_k: int = DEFAULT_TOP_K
+    ) -> list[SimilarEmbeddingRecord]:
+        """
+        Perform similarity search on Qdrant.
+
+        :param query_text: Query text.
+        :param top_k: Top-k.
+        :return: List of langchain `Document` results from Qdrant.
+        """
+        _LOGGER.info(
+            f"Running similarity search for query: '{query_text}', (k={top_k})"
+        )
+        try:
+            results = self._qdrant_client.similarity_search_with_score(
+                query_text, k=top_k
+            )
+            _LOGGER.info("Successfully searched Qdrant embeddings for query.")
+            return results
+        except Exception as e:
+            message = "failed to fetch results from Qdrant"
+            _LOGGER.info(message)
+            raise VectorDBError(message=message, cause=e) from e
+
+    def __configure_qdrant(
+        self, host: str, port: int, collection_name: str
+    ) -> LangchainQdrant:
+        """
+        Return a newly configured Qdrant client.
+
+        :return: LangchainQdrant client.
+        """
+        try:
+            client = QdrantClient(url=f"http://{host}:{port}")
+            return LangchainQdrant(
+                client=client,
+                collection_name=collection_name,
+                embedding=self.model,
+            )
+        except Exception as e:
+            message = f"Failed to connect to Qdrant at {host}:{port}"
+            _LOGGER.exception(message)
+            raise VectorDBError(message, cause=e) from e
+
+
+def vector_store_factory(config: dict[str, Any]) -> VectorStore:
+    """
+    Return a VectorStore instance based on the configuration.
+
+    :param config: Configuration dictionary.
+    :return: VectorStore instance.
+    """
+    vector_db_type = config.get("VECTOR_DB_TYPE", "chroma").lower()
+    model = config["EMBEDDING_MODEL"]
+
+    match vector_db_type:
+        case "chroma":
+            return ChromaVectorStore(
+                model=model,
+                sqlite_dir=config["CHROMA_SQLITE_DIR"],
+                collection=config["EMBEDDINGS_COLLECTION_CHROMA"],
+            )
+        case "qdrant":
+            return QdrantVectorStore(
+                model=model,
+                host=config["QDRANT_HOST"],
+                port=config["QDRANT_PORT"],
+                collection=config["QDRANT_COLLECTION"],
+            )
+        case _:
+            raise ValueError(f"Unknown Vector DB type: {vector_db_type}")
 
 
 def embeddings(model: str, device: str = "cpu") -> HuggingFaceEmbeddings:

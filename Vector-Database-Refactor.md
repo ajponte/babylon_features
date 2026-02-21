@@ -1,4 +1,4 @@
-I want you to refactor the Vector DB logic so that we can use `qduant`.
+I want you to refactor the Vector DB logic so that we can use `qduant`. See https://github.com/qdrant/qdrant.
 
 
 ## Constraints

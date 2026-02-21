@@ -26,6 +26,10 @@ CONFIG_LOADERS: list[Loader] = [
     # required(key="SQLALCHEMY_DATABASE_URL"),
     required(key="MONGO_DATA_LAKE_NAME"),
     required(key="EMBEDDINGS_COLLECTION_CHROMA"),
+    optional(key="VECTOR_DB_TYPE", default_val="chroma"),
+    optional(key="QDRANT_HOST", default_val="localhost"),
+    optional(key="QDRANT_PORT", default_val="6333", converter=to_int),
+    optional(key="QDRANT_COLLECTION", default_val="babylon_vectors"),
     optional(
         key="MONGO_CONNECTION_TIMEOUT_SECONDS",
         default_val=DEFAULT_CONNECTION_TIMEOUT_SECONDS,
