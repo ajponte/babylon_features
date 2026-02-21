@@ -2,14 +2,12 @@ from typing import Any
 
 from pymongo import MongoClient
 
+
 class MongoClientFactory:
     _client = None
 
     @classmethod
-    def get_client(
-        cls,
-        **kwargs
-    ) -> MongoClient:
+    def get_client(cls, **kwargs) -> MongoClient:
         """
         Return the `MongoClient` this factory points to.
 
@@ -17,14 +15,16 @@ class MongoClientFactory:
         :return: The `MongoClient` this factory points to.
         """
         if cls._client is None:
-            dl_config: dict[str, Any] | None = kwargs.get('config', None)
+            dl_config: dict[str, Any] | None = kwargs.get("config", None)
             if not dl_config:
-                raise ValueError('Config mapping not provided')
+                raise ValueError("Config mapping not provided")
             cls._client = _configure_mongo_client(dl_config)
         return cls._client
 
     @classmethod
-    def get_collection(cls, db_name: str, coll_name: str, client: MongoClient | None = None):
+    def get_collection(
+        cls, db_name: str, coll_name: str, client: MongoClient | None = None
+    ):
         """
         Return an iterator to all items in the collection.
 
@@ -38,29 +38,29 @@ class MongoClientFactory:
         return client[db_name][coll_name]
 
     @classmethod
-    def list_collections(cls, db_name: str, prefix: str | None = None, client: MongoClient | None = None) -> Any:
+    def list_collections(
+        cls, db_name: str, prefix: str | None = None, client: MongoClient | None = None
+    ) -> Any:
         if not client:
             client = cls.get_client()
         collections = list(client[db_name].list_collections())
         if not prefix:
-            return [col['name'] for col in collections]
+            return [col["name"] for col in collections]
 
         filtered = [
-            col['name']
-            for col in collections
-            if col['name'].startswith(prefix)
+            col["name"] for col in collections if col["name"].startswith(prefix)
         ]
         return filtered
 
 
 def _configure_mongo_client(config: dict):
     """Return a configured `MongoClient`."""
-    host: str = config['MONGO_DB_HOST']
-    port: int = config['MONGO_DB_PORT']
-    user: str = config['MONGO_DB_USER']
-    passwd: str = config['MONGO_DB_PASSWORD']
-    connection_timeout_seconds: int = config['MONGO_CONNECTION_TIMEOUT_SECONDS']
-    uri = f'{host}:{port}'
+    host: str = config["MONGO_DB_HOST"]
+    port: int = config["MONGO_DB_PORT"]
+    user: str = config["MONGO_DB_USER"]
+    passwd: str = config["MONGO_DB_PASSWORD"]
+    connection_timeout_seconds: int = config["MONGO_CONNECTION_TIMEOUT_SECONDS"]
+    uri = f"{host}:{port}"
     return MongoClient(
         uri,
         username=user,

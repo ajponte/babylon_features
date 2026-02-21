@@ -13,6 +13,7 @@ class CleanedDocument(BabylonVectorBasedDocument, abc.ABC):
     derived_transaction_category: str
     derived_transaction_type: str
 
+
 class CleanedTransactionDocument(CleanedDocument):
     account: str
 

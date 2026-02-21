@@ -7,5 +7,5 @@ __all__ = [
     "create_prompts",
     "generate_instruction_dataset",
     "push_to_huggingface",
-    "query_feature_store"
+    "query_feature_store",
 ]

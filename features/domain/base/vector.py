@@ -15,7 +15,7 @@ _LOGGER = get_logger()
 
 
 class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], abc.ABC):
-    _collection = 'babylon_vectors'
+    _collection = "babylon_vectors"
 
     _id: UUID4 = Field(default_factory=uuid.uuid4)
 
@@ -32,14 +32,13 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
         return cls._id
 
     @classmethod
-    def from_record(cls: Type[BABYLON_VECTOR_DOCUMENT], point: Record) -> BABYLON_VECTOR_DOCUMENT:
+    def from_record(
+        cls: Type[BABYLON_VECTOR_DOCUMENT], point: Record
+    ) -> BABYLON_VECTOR_DOCUMENT:
         _point_id = UUID4(point.id, version=4)
         payload = point.payload or {}
 
-        attrs = {
-            "id": _point_id,
-            **payload
-        }
+        attrs = {"id": _point_id, **payload}
 
         # Update internal embeddings.
         if cls._has_class_attrs("embedding"):
@@ -53,14 +52,16 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
         vector_store: VectorStore,
         query_vector: list,
         limit: int = 10,
-        **kwargs
+        **kwargs,
     ) -> list[BABYLON_VECTOR_DOCUMENT]:
         """Execute a search query against the vector db."""
         try:
             documents = cls._search(query_vector=query_vector, limit=limit, **kwargs)
         except Exception as e:
-            _LOGGER.debug(f'Error while searching documents: {e}')
-            _LOGGER.info(f"Failed to search documents in '{cls.get_collection_name()}'.")
+            _LOGGER.debug(f"Error while searching documents: {e}")
+            _LOGGER.info(
+                f"Failed to search documents in '{cls.get_collection_name()}'."
+            )
             documents = []
 
         return documents
@@ -69,19 +70,17 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
     def bulk_find(
         cls: Type[BABYLON_VECTOR_DOCUMENT],
         vectorstore: VectorStore,
-        limit: int=10,
+        limit: int = 10,
         **kwargs,
     ) -> tuple[list[BABYLON_VECTOR_DOCUMENT], uuid.UUID | None]:
         """Execute a bulk find of vector documents."""
         try:
             documents, next_offset = cls._bulk_find(
-                vectorstore=vectorstore,
-                limit=limit,
-                **kwargs
+                vectorstore=vectorstore, limit=limit, **kwargs
             )
         except Exception as e:
             message = f"Failed to search documents in '{cls.get_collection_name()}'."
-            _LOGGER.debug(message + f'\nError: {e}')
+            _LOGGER.debug(message + f"\nError: {e}")
             _LOGGER.info(message)
             documents, next_offset = [], None
 
@@ -95,8 +94,8 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
     def _bulk_find(
         cls: Type[BABYLON_VECTOR_DOCUMENT],
         vectorstore: VectorStore,
-        limit: int=10,
-        **kwargs
+        limit: int = 10,
+        **kwargs,
     ) -> tuple[list[BABYLON_VECTOR_DOCUMENT], uuid.UUID | None]:
         collection_name = cls.get_collection_name()
 
@@ -104,10 +103,7 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
         offset = str(offset) if offset else None
 
         records, next_offset = vectorstore.bulk_find(
-            collection_name=collection_name,
-            offset=offset,
-            limit=limit,
-            **kwargs
+            collection_name=collection_name, offset=offset, limit=limit, **kwargs
         )
 
         documents = [cls.from_record(record) for record in records]
@@ -125,7 +121,7 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
         limit: int = 10,
         with_payload: bool = True,
         with_vectors: bool = True,
-        **kwargs
+        **kwargs,
     ) -> list[BABYLON_VECTOR_DOCUMENT]:
         collection_name = cls.get_collection_name()
         records: list[Record] = vector_store.search_collection(
@@ -134,17 +130,18 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BABYLON_VECTOR_DOCUMENT], ab
             limit=limit,
             with_payload=with_payload,
             with_vectors=with_vectors,
-            **kwargs
+            **kwargs,
         )
         return [cls.from_record(record) for record in records]
 
-
     def to_point(self: BABYLON_VECTOR_DOCUMENT, **kwargs) -> PointStruct:
-        """Convert a vector document to an embedded point. """
+        """Convert a vector document to an embedded point."""
         exclude_unset = kwargs.pop("exclude_unset", False)
         by_alias = kwargs.pop("by_alias", True)
 
-        payload = self.model_dump(exclude_unset=exclude_unset, by_alias=by_alias, **kwargs)
+        payload = self.model_dump(
+            exclude_unset=exclude_unset, by_alias=by_alias, **kwargs
+        )
 
         _embedded_vector_id = str(payload.pop("id"))
         vector = payload.pop("embedding", {})

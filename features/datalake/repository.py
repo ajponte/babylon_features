@@ -21,7 +21,7 @@ class TransactionDto:
         details: str,
         tx_type: str,
         description: str,
-        check_num: str | None = ""
+        check_num: str | None = "",
     ):
         self._record_id = record_id
         self._amount = amount
@@ -66,14 +66,14 @@ class TransactionDto:
         return (
             f"(id, {self.id}, ",
             f"(amount, {self.amount}), ",
-            f"(posting_date, {self.posting_date})"
+            f"(posting_date, {self.posting_date})",
         )
-
 
     def __check_required_fields(self) -> None:
         if not all([self.id, self.posting_date, self.description, self.details]):
-            message = f'Not all required fields are present for DTO'
+            message = f"Not all required fields are present for DTO"
             raise RAGError(message)
+
 
 class BaseRepository:
     def __init__(self, collection: Collection, mapper):
@@ -89,7 +89,10 @@ class BaseRepository:
         return [r for r in results if r is not None]
 
     def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
-        results = [self._mapper.to_domain(doc) for doc in self._collection.find(filter_criteria)]
+        results = [
+            self._mapper.to_domain(doc)
+            for doc in self._collection.find(filter_criteria)
+        ]
         return [r for r in results if r is not None]
 
     @property
@@ -110,25 +113,25 @@ class TransactionRepository(BaseRepository):
         results = [self._mapper.to_domain(doc) for doc in docs]
         return [r for r in results if r is not None]
 
+
 class TransactionMapper:
     @staticmethod
     def to_domain(
-        doc: dict,
-        date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT
+        doc: dict, date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT
     ) -> TransactionDto | None:
         try:
             return TransactionDto(
                 record_id=str(doc["_id"]),
                 amount=doc["Amount"],
                 posting_date=convert_string_to_date(
-                    date_string=doc['PostingDate'], # type: ignore
-                    format_string=date_string_format # type: ignore
+                    date_string=doc["PostingDate"],  # type: ignore
+                    format_string=date_string_format,  # type: ignore
                 ),
                 description=doc["Description"],
-                details=doc['Details'],
-                tx_type=doc['Type'],
+                details=doc["Details"],
+                tx_type=doc["Type"],
                 # Optional
-                check_num=doc.get('CheckOrSlipNum', None)
+                check_num=doc.get("CheckOrSlipNum", None),
             )
         except Exception as e:
             # Skip invalid records.
@@ -136,18 +139,18 @@ class TransactionMapper:
 
     @staticmethod
     def to_document(
-            transaction: TransactionDto,
-            date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT
+        transaction: TransactionDto,
+        date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT,
     ) -> dict:
         return {
             "_id": ObjectId(transaction.id),
             "Amount": transaction.amount,
             "PostingDate": convert_date_to_string(
                 date_obj=transaction.posting_date,
-                format_string=date_string_format  # type: ignore
+                format_string=date_string_format,  # type: ignore
             ),
             "Description": transaction.description,
             "Details": transaction.details,
             "Type": transaction.transaction_type,
-            "CheckOrSlipNum": transaction.check_num
+            "CheckOrSlipNum": transaction.check_num,
         }

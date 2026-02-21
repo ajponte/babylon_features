@@ -2,6 +2,8 @@
 Unit of Work pattern for DB connection.
 See: https://medium.com/technology-hits/unit-of-work-python-domain-driven-design-patterns-f07a675588ee
 """
+
+
 class UnitOfWork:
     def __init__(self, client):
         self.session = client.start_session()

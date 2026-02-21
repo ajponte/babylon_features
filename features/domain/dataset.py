@@ -26,8 +26,12 @@ class InstructDataset(BabylonVectorBasedDocument):
         data = [sample.model_dump() for sample in self.samples]
 
         return Dataset.from_dict(
-            {"instruction": [d["instruction"] for d in data], "output": [d["answer"] for d in data]}
+            {
+                "instruction": [d["instruction"] for d in data],
+                "output": [d["answer"] for d in data],
+            }
         )
+
 
 class TrainTestSplit(BabylonVectorBasedDocument):
     train: dict
@@ -35,8 +39,14 @@ class TrainTestSplit(BabylonVectorBasedDocument):
     test_split_size: float
 
     def to_huggingface(self, flatten: bool = False) -> "DatasetDict":
-        train_datasets = {category.value: dataset.to_huggingface() for category, dataset in self.train.items()}
-        test_datasets = {category.value: dataset.to_huggingface() for category, dataset in self.test.items()}
+        train_datasets = {
+            category.value: dataset.to_huggingface()
+            for category, dataset in self.train.items()
+        }
+        test_datasets = {
+            category.value: dataset.to_huggingface()
+            for category, dataset in self.test.items()
+        }
 
         if flatten:
             train_datasets = concatenate_datasets(list(train_datasets.values()))
@@ -47,6 +57,7 @@ class TrainTestSplit(BabylonVectorBasedDocument):
 
         return DatasetDict({"train": train_datasets, "test": test_datasets})
 
+
 class InstructTrainTestSplit(TrainTestSplit):
     train: dict[DataCategory, InstructDataset]
     test: dict[DataCategory, InstructDataset]
@@ -55,6 +66,7 @@ class InstructTrainTestSplit(TrainTestSplit):
     class Config:
         category = DataCategory.INSTRUCT_DATASET
 
+
 class PreferenceDatasetSample(BabylonVectorBasedDocument):
     instruction: str
     rejected: str
@@ -62,6 +74,7 @@ class PreferenceDatasetSample(BabylonVectorBasedDocument):
 
     class Config:
         category = DataCategory.PREFERENCE_DATASET_SAMPLES
+
 
 class PreferenceDataset(BabylonVectorBasedDocument):
     category: DataCategory
@@ -84,6 +97,7 @@ class PreferenceDataset(BabylonVectorBasedDocument):
                 "chosen": [d["chosen"] for d in data],
             }
         )
+
 
 class PreferenceTrainTestSplit(TrainTestSplit):
     train: dict[DataCategory, PreferenceDataset]

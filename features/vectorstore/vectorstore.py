@@ -68,13 +68,7 @@ class VectorStore(ABC):
         """
 
     @abstractmethod
-    def bulk_find(
-        self,
-        collection_name: str,
-        offset: str,
-        limit: int,
-        **kwargs
-    ) -> Any:
+    def bulk_find(self, collection_name: str, offset: str, limit: int, **kwargs) -> Any:
         """
         Bulk-search the collection, starting at a specific `offset`.
 
@@ -85,11 +79,7 @@ class VectorStore(ABC):
 
     @abstractmethod
     def search_collection(
-        self,
-        collection_name: str,
-        query_vector: list,
-        limit: int,
-        **kwargs
+        self, collection_name: str, query_vector: list, limit: int, **kwargs
     ) -> list:
         """
         Search a Vectorstore collection.
@@ -180,22 +170,12 @@ class ChromaVectorStore(VectorStore):
             raise VectorDBError(message=message, cause=e) from e
 
     def search_collection(
-        self,
-        collection_name: str,
-        query_vector: list,
-        limit: int,
-        **kwargs
+        self, collection_name: str, query_vector: list, limit: int, **kwargs
     ) -> list:
-        raise NotImplementedError('Not implemented for Chroma.')
+        raise NotImplementedError("Not implemented for Chroma.")
 
-    def bulk_find(
-        self,
-        collection_name: str,
-        offset: int,
-        limit: int,
-        **kwargs
-    ) -> Any:
-        raise NotImplementedError('Not implemented for Chroma')
+    def bulk_find(self, collection_name: str, offset: int, limit: int, **kwargs) -> Any:
+        raise NotImplementedError("Not implemented for Chroma")
 
     def get_all(self, limit: int = DEFAULT_MAX_VECTORS_SEARCH) -> dict[str, list]:
         """
@@ -204,8 +184,7 @@ class ChromaVectorStore(VectorStore):
         try:
             # Fetches all data and includes all necessary fields
             results = self._chroma_api_client.get(
-                include=["embeddings", "documents", "metadatas"],
-                limit=limit
+                include=["embeddings", "documents", "metadatas"], limit=limit
             )
             return {
                 "embeddings": results.get("embeddings", []),
@@ -258,7 +237,9 @@ class QdrantVectorStore(VectorStore):
         """
         super().__init__(model)
         self._qdrant_client = self.__configure_qdrant(
-            host=host, port=port, collection_name=collection,
+            host=host,
+            port=port,
+            collection_name=collection,
         )
 
     def add_documents(self, documents: list[Document]) -> None:
@@ -296,11 +277,7 @@ class QdrantVectorStore(VectorStore):
             raise VectorDBError(message=message, cause=e) from e
 
     def bulk_find(
-        self,
-        collection_name: str,
-        offset: int,
-        limit: int,
-        **kwargs
+        self, collection_name: str, offset: int, limit: int, **kwargs
     ) -> tuple[list, str]:
         with_payload = kwargs.pop("with_payload", True)
         with_vectors = kwargs.pop("with_vectors", False)
@@ -311,7 +288,7 @@ class QdrantVectorStore(VectorStore):
             with_payload=with_payload,
             with_vectors=with_vectors,
             offset=offset,
-            **kwargs
+            **kwargs,
         )
 
         return records, next_offset
@@ -321,7 +298,7 @@ class QdrantVectorStore(VectorStore):
         collection_name: str,
         query_vector: list,
         limit: int = DEFAULT_MAX_VECTORS_SEARCH,
-        **kwargs
+        **kwargs,
     ) -> list:
         with_payload = kwargs.pop("with_payload", True)
         with_vectors = kwargs.pop("with_vectors", False)
@@ -332,15 +309,15 @@ class QdrantVectorStore(VectorStore):
                 limit=limit,
                 with_payload=with_payload,
                 with_vectors=with_vectors,
-                **kwargs
+                **kwargs,
             )
         except Exception as e:
-            msg = f'Error while searching Qdrant. Error: {e}'
+            msg = f"Error while searching Qdrant. Error: {e}"
             raise VectorDBError(message=msg, cause=e) from e
 
         return records
 
-    def get_all(self, limit:int=DEFAULT_MAX_VECTORS_SEARCH) -> dict[str, list]:
+    def get_all(self, limit: int = DEFAULT_MAX_VECTORS_SEARCH) -> dict[str, list]:
         """
         Fetch all data from Qdrant.
         """
