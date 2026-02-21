@@ -71,6 +71,14 @@ class VectorStore(ABC):
         :param: Documents to add.
         """
 
+    @abstractmethod
+    def get_all(self) -> dict[str, list]:
+        """
+        Return all embeddings, documents, and metadata from the store.
+
+        :return: A dictionary containing 'embeddings', 'documents', and 'metadatas'.
+        """
+
 
 class ChromaVectorStore(VectorStore):
     """
@@ -133,6 +141,25 @@ class ChromaVectorStore(VectorStore):
             _LOGGER.info(message)
             _LOGGER.debug(f"Failed query: {query_text}")
             raise VectorDBError(message=message, cause=e) from e
+
+    def get_all(self) -> dict[str, list]:
+        """
+        Fetch all data from Chroma.
+        """
+        try:
+            # Fetches all data and includes all necessary fields
+            results = self._chroma_api_client.get(
+                include=["embeddings", "documents", "metadatas"]
+            )
+            return {
+                "embeddings": results.get("embeddings", []),
+                "documents": results.get("documents", []),
+                "metadatas": results.get("metadatas", []),
+            }
+        except Exception as e:
+            message = "Failed to fetch all records from Chroma"
+            _LOGGER.exception(message)
+            raise VectorDBError(message, cause=e) from e
 
     def __configure_chroma(self, sqlite_dir: str, collection_name: str) -> Chroma:
         """
@@ -205,6 +232,47 @@ class QdrantVectorStore(VectorStore):
             message = "failed to fetch results from Qdrant"
             _LOGGER.info(message)
             raise VectorDBError(message=message, cause=e) from e
+
+    def get_all(self) -> dict[str, list]:
+        """
+        Fetch all data from Qdrant.
+        """
+        try:
+            # We use the underlying qdrant client to scroll through all points.
+            # For simplicity in visualization, we might limit this or implement pagination if huge.
+            # Using a large limit for now as visualize.py seems to expect everything.
+            points, _ = self._qdrant_client.client.scroll(
+                collection_name=self._qdrant_client.collection_name,
+                limit=10000,
+                with_payload=True,
+                with_vectors=True,
+            )
+
+            embeddings_list = []
+            documents = []
+            metadatas = []
+
+            for point in points:
+                if point.vector:
+                    embeddings_list.append(point.vector)
+                    # Langchain Qdrant stores page_content in payload['page_content']
+                    page_content = ""
+                    metadata = {}
+                    if point.payload:
+                        page_content = point.payload.get("page_content", "")
+                        metadata = point.payload.get("metadata", {})
+                    documents.append(page_content)
+                    metadatas.append(metadata)
+
+            return {
+                "embeddings": embeddings_list,
+                "documents": documents,
+                "metadatas": metadatas,
+            }
+        except Exception as e:
+            message = "Failed to fetch all records from Qdrant"
+            _LOGGER.exception(message)
+            raise VectorDBError(message, cause=e) from e
 
     def __configure_qdrant(
         self, host: str, port: int, collection_name: str

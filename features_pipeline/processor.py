@@ -82,7 +82,10 @@ class CollectionProcessor(DataLakeProcessor):
                 chunks = text_splitter.split_documents([doc])
                 all_chunks.extend(chunks)
             except Exception as e:
-                message = f"Error while building/chunking langchain document for record {transaction.id}"
+                message = (
+                    f"Error while building/chunking langchain document "
+                    f"for record {transaction.id}"
+                )
                 _LOGGER.info(message)
                 _LOGGER.debug(f"Error: {e}")
                 continue

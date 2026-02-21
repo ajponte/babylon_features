@@ -106,7 +106,7 @@ class TransactionRepository(BaseRepository):
         return self._mapper.to_domain(doc) if doc else None
 
     def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
-        docs = self._collection.find(filter_criteria) or []
+        docs: list[dict] = list(self._collection.find(filter_criteria) or [])
         results = [self._mapper.to_domain(doc) for doc in docs]
         return [r for r in results if r is not None]
 

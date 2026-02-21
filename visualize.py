@@ -3,20 +3,26 @@ Data visualization tools.
 """
 from enum import StrEnum
 
+import argparse
 import numpy as np
 from numpy.typing import NDArray
 from sklearn.manifold import TSNE
 import plotly.graph_objects as go
+from dotenv import load_dotenv
 
 from features_pipeline.logger import get_logger
-from features_pipeline.vectorstore import ChromaVectorStore
+from features_pipeline.vectorstore import VectorStore, vector_store_factory
 
 
 _LOGGER = get_logger()
 
+# Default values
 DEFAULT_EMBEDDING_MODEL = 'BAAI/bge-small-en-v1.5'
 DEFAULT_CHROMA_SQLITE_DIR = './chromadb'
-DEFAULT_EMBEDDINGS_COLLECTION_CHROMA = 'babylon_vectors'
+DEFAULT_CHROMA_COLLECTION = 'babylon_vectors'
+DEFAULT_QDRANT_HOST = 'localhost'
+DEFAULT_QDRANT_PORT = 6333
+DEFAULT_QDRANT_COLLECTION = 'babylon_vectors'
 
 # DEFAULT_METADATA_KEYS = {
 #     "source_collection": collection,
@@ -35,28 +41,24 @@ class ChartType(StrEnum):
 
 
 def visualize_vector_store(
-    vector_store: ChromaVectorStore,
+    vector_store: VectorStore,
     chart_type: ChartType
 ):
     """
-    Produce a visualization of the chroma vector store.
+    Produce a visualization of the vector store.
 
     :param vector_store: Vector Store.
     :param chart_type: Type of chart to render.
     """
-    # Access the underlying Chroma collection object from the vector store instance
-    collection = vector_store.db_client._collection # Access the internal Chroma object
-    count = collection.count()
-    _LOGGER.info(f'Found {count} items in the collection')
+    _LOGGER.info('Fetching data from the vector store')
 
-    # Fetch all embeddings, documents, and metadatas
-    sample_embeddings = get_all_embeddings(collection) # Corrected function call to get all
+    # Fetch all embeddings, documents, and metadatas using the generic method
+    sample_embeddings = vector_store.get_all()
 
     # Get the list of embeddings
     embeddings_list = sample_embeddings.get('embeddings')
 
     # Check for embeddings: Ensure the key exists and the collection is not empty.
-    # We use 'is None' and explicit length check to avoid ambiguous truthiness on array-like objects.
     if embeddings_list is None or len(embeddings_list) == 0:
         _LOGGER.warning("No embeddings found in the collection. Cannot visualize.")
         return
@@ -66,12 +68,12 @@ def visualize_vector_store(
     documents = sample_embeddings['documents']
     metadatas = sample_embeddings['metadatas']
 
-    # Get the dimensionality from the first vector's size (assuming all are consistent)
+    # Get the dimensionality from the first vector's size
     dimensions = vectors.shape[1]
     # Use the actual number of fetched vectors for the count
     num_vectors = vectors.shape[0]
 
-    print(f"There are {num_vectors:,} vectors with {dimensions:,} dimensions in the vector store")
+    _LOGGER.info(f"There are {num_vectors:,} vectors with {dimensions:,} dimensions in the vector store")
 
 
     # Process metadatas to get doc types and colors
@@ -104,21 +106,6 @@ def visualize_vector_store(
         scatter_plot.show()
     else:
         _LOGGER.info(f'Unsupported chart type: {chart_type}')
-
-# Renamed function and updated logic to fetch all data
-def get_all_embeddings(collection):
-    """
-    Fetch all data (embeddings, documents, metadatas) from the collection.
-    """
-    _LOGGER.info(f'Fetching ALL data from collection {collection.name}')
-    # Fetches all data (limit=None) and includes all necessary fields
-    results = collection.get(
-        ids=collection.get()['ids'], # A way to get all IDs
-        include=["embeddings", "documents", "metadatas"]
-    )
-    # The Chroma 'get' results dictionary already contains:
-    # 'ids', 'embeddings', 'documents', 'metadatas'
-    return results
 
 def tsne_reduce(vectors: NDArray) -> NDArray:
     """
@@ -192,7 +179,7 @@ def _generate_scatter_plot_3d(
     )])
 
     fig.update_layout(
-        title='3D Chroma Vector Store Visualization',
+        title='3D Vector Store Visualization',
         scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z'),
         width=900,
         height=700,
@@ -227,7 +214,7 @@ def _generate_scatter_plot_2d(
     )])
 
     fig.update_layout(
-        title='2D Chroma Vector Store Visualization (t-SNE)',
+        title='2D Vector Store Visualization (t-SNE)',
         # Changed 'scene' to 'xaxis' and 'yaxis' for a 2D plot
         xaxis_title='t-SNE Dimension 1',
         yaxis_title='t-SNE Dimension 2',
@@ -242,15 +229,34 @@ def main():
     """
     Main entry point to initialize and visualize vector store.
     """
+    load_dotenv(override=True)
 
-    # Create 3d scatter plot
+    parser = argparse.ArgumentParser(description='Visualize Vector Store')
+    parser.add_argument('--vector-db', type=str, choices=['chroma', 'qdrant'], 
+                        default='qdrant', help='Vector DB type to visualize')
+    parser.add_argument('--chart-type', type=str, 
+                        choices=[c.value for c in ChartType],
+                        default=ChartType.SCATTER_PLOT_3D.value, 
+                        help='Type of chart to render')
+    
+    args = parser.parse_args()
+
+    config = {
+        'VECTOR_DB_TYPE': args.vector_db,
+        'EMBEDDING_MODEL': DEFAULT_EMBEDDING_MODEL,
+        'CHROMA_SQLITE_DIR': DEFAULT_CHROMA_SQLITE_DIR,
+        'EMBEDDINGS_COLLECTION_CHROMA': DEFAULT_CHROMA_COLLECTION,
+        'QDRANT_HOST': DEFAULT_QDRANT_HOST,
+        'QDRANT_PORT': DEFAULT_QDRANT_PORT,
+        'QDRANT_COLLECTION': DEFAULT_QDRANT_COLLECTION,
+    }
+
+    # The factory will pick up from the environment too if variables match.
+    store = vector_store_factory(config)
+
     visualize_vector_store(
-        ChromaVectorStore(
-            model=DEFAULT_EMBEDDING_MODEL,
-            sqlite_dir=DEFAULT_CHROMA_SQLITE_DIR,
-            collection=DEFAULT_EMBEDDINGS_COLLECTION_CHROMA
-        ),
-        chart_type=ChartType.SCATTER_PLOT_3D
+        store,
+        chart_type=ChartType(args.chart_type)
     )
 
 if __name__ == '__main__':
