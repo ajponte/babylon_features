@@ -2,7 +2,7 @@
 
 from langchain_core.documents import Document
 
-from features.datalake import TransactionDto, TransactionMapper
+from features.datalake.repository import TransactionDto, TransactionMapper
 from features.logger import get_logger
 from features.utils import create_random_uuid_hex
 
