@@ -5,10 +5,10 @@ from abc import ABC, abstractmethod
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from datalake.repository import BaseRepository
-from features_pipeline.logger import get_logger
-from features_pipeline.rag.documents.document_builder import build_langchain_document
-from features_pipeline.vectorstore import VectorStore
+from features.datalake.repository import BaseRepository
+from features.logger import get_logger
+from features.rag.documents.document_builder import build_langchain_document
+from features.vector_store.vectorstore import VectorStore
 
 _LOGGER = get_logger()
 

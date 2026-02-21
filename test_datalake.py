@@ -1,6 +1,6 @@
-from datalake.mongo_factory import MongoClientFactory
-from datalake.repository import TransactionRepository
-from datalake.uow import UnitOfWork
+from features.datalake.mongo_factory import MongoClientFactory
+from features.datalake.repository import TransactionRepository
+from features.datalake.uow import UnitOfWork
 
 DATALAKE_DB_NAME = "babylonDataLake"
 

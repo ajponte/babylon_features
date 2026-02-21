@@ -3,7 +3,7 @@
 
 from zenml import pipeline
 
-from features_pipeline.steps import feature_generation as fg_steps
+from features.steps import feature_generation as fg_steps
 
 
 @pipeline

@@ -10,8 +10,8 @@ from sklearn.manifold import TSNE
 import plotly.graph_objects as go
 from dotenv import load_dotenv
 
-from features_pipeline.logger import get_logger
-from features_pipeline.vectorstore import VectorStore, vector_store_factory
+from features.logger import get_logger
+from features.vector_store.vectorstore import VectorStore, vector_store_factory
 
 
 _LOGGER = get_logger()
@@ -23,6 +23,9 @@ DEFAULT_CHROMA_COLLECTION = 'babylon_vectors'
 DEFAULT_QDRANT_HOST = 'localhost'
 DEFAULT_QDRANT_PORT = 6333
 DEFAULT_QDRANT_COLLECTION = 'babylon_vectors'
+
+# The max number of vectors to return per query.
+MAX_VECTORS_SEARCH = 10000
 
 # DEFAULT_METADATA_KEYS = {
 #     "source_collection": collection,

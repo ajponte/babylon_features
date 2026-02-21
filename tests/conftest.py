@@ -2,7 +2,7 @@ from pytest import fixture
 import os
 from unittest.mock import patch
 
-from features_pipeline.config.hashicorp import OpenBaoApiClient
+from features.config.hashicorp import OpenBaoApiClient
 
 # The following environment variables are set here so they are
 # available for all fixtures, including session-scoped ones.

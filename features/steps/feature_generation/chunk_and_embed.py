@@ -5,7 +5,7 @@
 from typing_extensions import Annotated
 from zenml import step
 
-from features_pipeline.logger import get_logger
+from features.logger import get_logger
 
 _LOGGER = get_logger()
 

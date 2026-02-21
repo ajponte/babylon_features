@@ -1,11 +1,10 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from langchain_core.documents import Document
-from features_pipeline.vectorstore import (
+from features.vector_store.vectorstore import (
     ChromaVectorStore,
     QdrantVectorStore,
-    vector_store_factory,
-    VectorDBError
+    vector_store_factory
 )
 
 @pytest.fixture

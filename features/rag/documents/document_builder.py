@@ -2,9 +2,9 @@
 
 from langchain_core.documents import Document
 
-from datalake.repository import TransactionDto, TransactionMapper
-from features_pipeline.logger import get_logger
-from features_pipeline.utils import create_random_uuid_hex
+from features.datalake import TransactionDto, TransactionMapper
+from features.logger import get_logger
+from features.utils import create_random_uuid_hex
 
 _LOGGER = get_logger()
 

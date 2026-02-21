@@ -8,13 +8,13 @@ from typing import Any
 import time
 from dotenv import load_dotenv
 
-from datalake.mongo_factory import MongoClientFactory
-from datalake.repository import TransactionRepository
-from datalake.uow import UnitOfWork
-from features_pipeline.logger import get_logger
-from features_pipeline.processor import CollectionProcessor
-from features_pipeline.vectorstore import vector_store_factory
-from features_pipeline.config.config import update_config
+from features.datalake.mongo_factory import MongoClientFactory
+from features.datalake.repository import TransactionRepository
+from features.datalake.uow import UnitOfWork
+from features.logger import get_logger
+from features.processor import CollectionProcessor
+from features.vector_store.vectorstore import vector_store_factory
+from features.config.config import update_config
 
 
 _LOGGER = get_logger()

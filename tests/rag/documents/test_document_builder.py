@@ -1,7 +1,7 @@
 from pytest import fixture
 
-from datalake.repository import TransactionDto, TransactionMapper
-from features_pipeline.rag.documents.document_builder import build_document_metadata, build_langchain_document
+from features.datalake.repository import TransactionDto, TransactionMapper
+from features.rag.documents.document_builder import build_langchain_document
 
 MOCK_DATALAKE_COLLECTION_NAME = 'test-dl-record'
 MOCK_DATALAKE_RECORD_ID = '68eb41eca6ecff590db124a1'

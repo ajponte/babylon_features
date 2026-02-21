@@ -1,4 +1,4 @@
-from features_pipeline.steps.feature_generation.clean import clean_documents
+from features.steps.feature_generation.clean import clean_documents
 
 def test_clean_documents():
     """Test the clean_documents step."""

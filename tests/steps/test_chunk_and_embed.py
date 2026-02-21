@@ -1,4 +1,4 @@
-from features_pipeline.steps.feature_generation.chunk_and_embed import chunk_and_embed
+from features.steps.feature_generation.chunk_and_embed import chunk_and_embed
 
 def test_chunk_and_embed():
     """Test the chunk_and_embed step."""

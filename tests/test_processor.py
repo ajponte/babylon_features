@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from langchain_core.documents import Document
-from features_pipeline.processor import CollectionProcessor
+from features.processor import CollectionProcessor
 
 @pytest.fixture
 def mock_vector_store():

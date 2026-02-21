@@ -1,0 +1,17 @@
+from typing_extensions import Annotated
+
+from zenml import step
+
+from features.domain.data_category import DataCategory
+from features.domain.dataset import DatasetType
+from features.domain.prompt import GenerateDatasetSamplesPrompt
+
+
+@step
+def create_prompts(
+    documents: Annotated[list, "queried_cleaned_documents"],
+    dataset_type: Annotated[DatasetType, "dataset_type"],
+) -> Annotated[dict[DataCategory, list[GenerateDatasetSamplesPrompt]], "prompts"]:
+    """Entry point for Prompt Generation Step."""
+
+    dataset_generator = generation

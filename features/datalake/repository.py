@@ -6,8 +6,8 @@ from datetime import date
 from pymongo.collection import Collection
 from bson import ObjectId
 
-from features_pipeline.error import RAGError
-from features_pipeline.utils import convert_string_to_date, convert_date_to_string
+from features.error import RAGError
+from features.utils import convert_string_to_date, convert_date_to_string
 
 DEFAULT_DATE_STRING_FORMAT = "%m/%d/%Y"
 

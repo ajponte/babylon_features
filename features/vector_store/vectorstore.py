@@ -15,10 +15,14 @@ from qdrant_client.http import models as qmodels
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 
-from features_pipeline.error import VectorDBError
-from features_pipeline.logger import get_logger
+from features.error import VectorDBError
+from features.logger import get_logger
 
+# Top K results from cosine similarity search.
 DEFAULT_TOP_K = 5
+
+# The max number of vectors to return per query.
+DEFAULT_MAX_VECTORS_SEARCH = 10000
 
 _LOGGER = get_logger()
 
@@ -64,6 +68,39 @@ class VectorStore(ABC):
         """
 
     @abstractmethod
+    def bulk_find(
+        self,
+        collection_name: str,
+        offset: str,
+        limit: int,
+        **kwargs
+    ) -> Any:
+        """
+        Bulk-search the collection, starting at a specific `offset`.
+
+        :param collection_name: Collection name.
+        :param limit: Search limit.
+        :param offset: Search offset.
+        """
+
+    @abstractmethod
+    def search_collection(
+        self,
+        collection_name: str,
+        query_vector: list,
+        limit: int,
+        **kwargs
+    ) -> list:
+        """
+        Search a Vectorstore collection.
+
+        :param collection_name: Collection Name.
+        :param query_vector: Query vector to match.
+        :param limit: Max vectors to search.
+        :return: List of vectors.
+        """
+
+    @abstractmethod
     def add_documents(self, documents: list[Document]) -> None:
         """
         Add documents to the vector store.
@@ -72,7 +109,7 @@ class VectorStore(ABC):
         """
 
     @abstractmethod
-    def get_all(self) -> dict[str, list]:
+    def get_all(self, limit: int) -> dict[str, list]:
         """
         Return all embeddings, documents, and metadata from the store.
 
@@ -142,14 +179,33 @@ class ChromaVectorStore(VectorStore):
             _LOGGER.debug(f"Failed query: {query_text}")
             raise VectorDBError(message=message, cause=e) from e
 
-    def get_all(self) -> dict[str, list]:
+    def search_collection(
+        self,
+        collection_name: str,
+        query_vector: list,
+        limit: int,
+        **kwargs
+    ) -> list:
+        raise NotImplementedError('Not implemented for Chroma.')
+
+    def bulk_find(
+        self,
+        collection_name: str,
+        offset: int,
+        limit: int,
+        **kwargs
+    ) -> Any:
+        raise NotImplementedError('Not implemented for Chroma')
+
+    def get_all(self, limit: int = DEFAULT_MAX_VECTORS_SEARCH) -> dict[str, list]:
         """
-        Fetch all data from Chroma.
+        Fetch all data from Chroma. Only for testing.
         """
         try:
             # Fetches all data and includes all necessary fields
             results = self._chroma_api_client.get(
-                include=["embeddings", "documents", "metadatas"]
+                include=["embeddings", "documents", "metadatas"],
+                limit=limit
             )
             return {
                 "embeddings": results.get("embeddings", []),
@@ -185,7 +241,13 @@ class QdrantVectorStore(VectorStore):
     Qdrant Vector Store.
     """
 
-    def __init__(self, model: str, host: str, port: int, collection: str):
+    def __init__(
+        self,
+        model: str,
+        host: str,
+        port: int,
+        collection: str,
+    ):
         """
         Constructor.
 
@@ -196,7 +258,7 @@ class QdrantVectorStore(VectorStore):
         """
         super().__init__(model)
         self._qdrant_client = self.__configure_qdrant(
-            host=host, port=port, collection_name=collection
+            host=host, port=port, collection_name=collection,
         )
 
     def add_documents(self, documents: list[Document]) -> None:
@@ -233,7 +295,52 @@ class QdrantVectorStore(VectorStore):
             _LOGGER.info(message)
             raise VectorDBError(message=message, cause=e) from e
 
-    def get_all(self) -> dict[str, list]:
+    def bulk_find(
+        self,
+        collection_name: str,
+        offset: int,
+        limit: int,
+        **kwargs
+    ) -> tuple[list, str]:
+        with_payload = kwargs.pop("with_payload", True)
+        with_vectors = kwargs.pop("with_vectors", False)
+
+        records, next_offset = self._qdrant_client.client.scroll(
+            collection_name=collection_name,
+            limit=limit,
+            with_payload=with_payload,
+            with_vectors=with_vectors,
+            offset=offset,
+            **kwargs
+        )
+
+        return records, next_offset
+
+    def search_collection(
+        self,
+        collection_name: str,
+        query_vector: list,
+        limit: int = DEFAULT_MAX_VECTORS_SEARCH,
+        **kwargs
+    ) -> list:
+        with_payload = kwargs.pop("with_payload", True)
+        with_vectors = kwargs.pop("with_vectors", False)
+        try:
+            records = self._qdrant_client.search(
+                collection_name=collection_name,
+                query_vector=query_vector,
+                limit=limit,
+                with_payload=with_payload,
+                with_vectors=with_vectors,
+                **kwargs
+            )
+        except Exception as e:
+            msg = f'Error while searching Qdrant. Error: {e}'
+            raise VectorDBError(message=msg, cause=e) from e
+
+        return records
+
+    def get_all(self, limit:int=DEFAULT_MAX_VECTORS_SEARCH) -> dict[str, list]:
         """
         Fetch all data from Qdrant.
         """
@@ -275,12 +382,15 @@ class QdrantVectorStore(VectorStore):
             raise VectorDBError(message, cause=e) from e
 
     def __configure_qdrant(
-        self, host: str, port: int, collection_name: str
+        self,
+        host: str,
+        port: int,
+        collection_name: str,
     ) -> LangchainQdrant:
         """
         Return a newly configured Qdrant client.
 
-        :return: LangchainQdrant client.
+        :return: LangchainQdrant client if `langchain` is enabled, otherwise `Qdrant`.
         """
         try:
             client = QdrantClient(url=f"http://{host}:{port}")

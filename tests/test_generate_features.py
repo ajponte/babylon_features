@@ -1,12 +1,12 @@
 from unittest.mock import patch, MagicMock
-from features_pipeline.generate_features import generate_features
+from features.pipeline.generate_features import generate_features
 
 def test_generate_features_flow():
     with patch("features_pipeline.generate_features.fg_steps") as mock_fg_steps:
         # Mocking return values for steps.
-        # ZenML steps return a StepInvocation or similar, 
+        # ZenML steps return a StepInvocation or similar,
         # but if we mock them, they return whatever we set.
-        
+
         mock_raw = MagicMock(invocation_id="raw_docs_id")
         mock_clean = MagicMock(invocation_id="clean_docs_id")
         mock_step1 = MagicMock(invocation_id="step1_id")
@@ -24,12 +24,12 @@ def test_generate_features_flow():
         # Verify calls
         mock_fg_steps.query_data_lake.assert_called_once_with(after="some_step")
         mock_fg_steps.clean_documents.assert_called_once_with(mock_raw)
-        
+
         # load_to_vector_db is called twice
         assert mock_fg_steps.load_to_vector_db.call_count == 2
         mock_fg_steps.load_to_vector_db.assert_any_call(mock_clean)
         mock_fg_steps.load_to_vector_db.assert_any_call(mock_embedded)
-        
+
         mock_fg_steps.chunk_and_embed.assert_called_once_with(mock_clean)
 
         assert result == ["step1_id", "step2_id"]
