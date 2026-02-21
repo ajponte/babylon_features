@@ -20,17 +20,17 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python }}
 
     # Cache the .tox directory
     - name: Cache tox environments
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: .tox
-        # Generate a key based on OS, Python version, and a hash of the main dependency file
-        key: ${{ runner.os }}-${{ matrix.python }}-tox-${{ hashFiles('pyproject.toml') }}
+        # Generate a key based on OS, Python version, and hashes of dependency/config files
+        key: ${{ runner.os }}-${{ matrix.python }}-tox-${{ hashFiles('pyproject.toml', 'tox.ini', 'poetry.lock') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.python }}-tox-
 
@@ -41,7 +41,5 @@ jobs:
 
     - name: Run checks with tox
       run: |
-        # Use '--skip-pkg-install' to prevent package re-installation 
-        # IF the environment already exists and is up-to-date.
-        # Note: If dependencies change, tox will re-install them and the cache key will change.
-        tox -e lint,format,pytest --skip-pkg-install
+        # Run all specified checks. Tox will manage environment creation and installation.
+        tox -e lint,format,pytest
