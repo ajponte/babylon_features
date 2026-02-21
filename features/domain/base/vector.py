@@ -50,7 +50,11 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
         """Convert a Qdrant Record to a compatible Babylon vectorized document."""
         # Ensure point.id is a string for UUID conversion
         point_id_str = str(point.id)
-        _point_id = UUID4(point_id_str, version=4) # pylint: disable=unexpected-keyword-arg
+        # pylint: disable=unexpected-keyword-arg
+        _point_id = UUID4(
+            point_id_str,
+            version=4
+        )
         payload = point.payload or {}
 
         attrs = {"id": _point_id, **payload}
@@ -119,10 +123,9 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
         vectorstore: VectorStore,
         offset: str | None = None,
         limit: int = 10,
-        **kwargs
+        **kwargs,
     ) -> tuple[list[BabylonVectorDocument], uuid.UUID | None]:
         collection_name = cls.get_collection_name()
-
 
         records, next_offset = vectorstore.bulk_find(
             collection_name=collection_name, offset=offset, limit=limit, **kwargs

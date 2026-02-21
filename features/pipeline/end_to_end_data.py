@@ -27,5 +27,5 @@ def end_to_end_data(
         push_to_hugging_face=push_to_hugging_face,
         dataset_id=dataset_id,
         mock=mock,
-        wait_for=wait_for_ids[0] if wait_for_ids else None
+        wait_for=wait_for_ids[0] if wait_for_ids else None,
     )
