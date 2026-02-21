@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
 from langchain_core.documents import Document
-from features.vector_store.vectorstore import (
+from features.vectorstore.vectorstore import (
     ChromaVectorStore,
     QdrantVectorStore,
     vector_store_factory
@@ -9,18 +9,18 @@ from features.vector_store.vectorstore import (
 
 @pytest.fixture
 def mock_embeddings():
-    with patch("features.vectorstore.embeddings") as mock:
+    with patch("features.vectorstore.vectorstore.embeddings") as mock:
         yield mock
 
 @pytest.fixture
 def mock_chroma():
-    with patch("features.vectorstore.Chroma") as mock:
+    with patch("features.vectorstore.vectorstore.Chroma") as mock:
         yield mock
 
 @pytest.fixture
 def mock_qdrant():
-    with patch("features.vectorstore.LangchainQdrant") as mock_lq, \
-         patch("features.vectorstore.QdrantClient") as mock_qc:
+    with patch("features.vectorstore.vectorstore.LangchainQdrant") as mock_lq, \
+         patch("features.vectorstore.vectorstore.QdrantClient") as mock_qc:
         yield mock_lq, mock_qc
 
 def test_chroma_vector_store_add_documents(mock_embeddings, mock_chroma):

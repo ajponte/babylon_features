@@ -13,7 +13,7 @@ from features.datalake.repository import TransactionRepository
 from features.datalake.uow import UnitOfWork
 from features.logger import get_logger
 from features.processor import CollectionProcessor
-from features.vector_store.vectorstore import vector_store_factory
+from features.vectorstore.vectorstore import vector_store_factory
 from features.config.config import update_config
 
 

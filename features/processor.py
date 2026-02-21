@@ -8,7 +8,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from features.datalake.repository import BaseRepository
 from features.logger import get_logger
 from features.rag.documents.document_builder import build_langchain_document
-from features.vector_store.vectorstore import VectorStore
+from features.vectorstore.vectorstore import VectorStore
 
 _LOGGER = get_logger()
 

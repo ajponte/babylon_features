@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 from dotenv import load_dotenv
 
 from features.logger import get_logger
-from features.vector_store.vectorstore import VectorStore, vector_store_factory
+from features.vectorstore.vectorstore import VectorStore, vector_store_factory
 
 
 _LOGGER = get_logger()
