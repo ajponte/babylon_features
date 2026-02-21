@@ -1,5 +1,6 @@
 # pylint: disable=unused-argument
 """Step for generating prompts."""
+
 from typing_extensions import Annotated
 
 from zenml import step

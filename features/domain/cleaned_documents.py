@@ -1,5 +1,6 @@
 # pylint: disable=too-few-public-methods
 """Representations for the cleaned documents generated from the pipeline."""
+
 import abc
 from datetime import datetime
 
