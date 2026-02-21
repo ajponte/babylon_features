@@ -23,25 +23,25 @@ class BabylonVectorBasedDocument(BaseModel, Generic[BabylonVectorDocument], abc.
 
     _collection = "babylon_vectors"
 
-    _id: UUID4 = Field(default_factory=uuid.uuid4)
+    id_: UUID4 = Field(default_factory=uuid.uuid4)
 
     @property
     def id(self) -> UUID4:
         """Return the document ID."""
-        return self._id
+        return self.id_
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
             return False
-        return self._id == other.id
+        return self.id_ == other.id
 
     def __hash__(self) -> int:
-        return hash(self._id)
+        return hash(self.id_)
 
     @classmethod
     def document_id(cls) -> UUID4:
         """Return the document ID."""
-        return cls._id
+        return cls.id_
 
     @classmethod
     def from_record(

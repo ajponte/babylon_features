@@ -15,7 +15,7 @@ def push_to_hugging_face(
         InstructTrainTestSplit | PreferenceTrainTestSplit, "dataset_split"
     ],
     dataset_id: Annotated[str, "dataset_id"],
-    **kwargs,
+    huggingface_token,
 ) -> None:
     """Entry point for pushing a generated dataset to HuggingFace."""
     assert (
@@ -24,5 +24,4 @@ def push_to_hugging_face(
     _LOGGER.info(f"Pushing dataset {dataset_id} to HuggingFace.")
 
     huggingface_dataset = dataset.to_huggingface(flatten=True)
-    huggingface_token = kwargs.pop("huggingface_token")
     huggingface_dataset.push_to_hub(dataset_id, token=huggingface_token)
