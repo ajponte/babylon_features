@@ -6,7 +6,6 @@ import uuid
 
 from features_pipeline.logger import get_logger
 
-
 _LOGGER = get_logger()
 
 
