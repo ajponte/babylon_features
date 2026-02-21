@@ -41,7 +41,7 @@ def hvac_client():
     Changed the scope to 'session' to match mock_bao_client.
     The patch is automatically started and stopped by pytest.
     """
-    with patch('features_pipeline.config.hashicorp.hvac.Client') as mock_client:
+    with patch('features.config.hashicorp.hvac.Client') as mock_client:
         yield mock_client
 
 @fixture(scope='session')

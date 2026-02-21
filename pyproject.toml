@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "features_pipeline"
+name = "features"
 version = "0.1.0"
 description = "Babylon Features & RAG Pipeline"
 authors = ["Alan Ponte <alanjponte@gmail.com>"]

@@ -2,7 +2,7 @@ from unittest.mock import patch, MagicMock
 from features.pipeline.generate_features import generate_features
 
 def test_generate_features_flow():
-    with patch("features_pipeline.generate_features.fg_steps") as mock_fg_steps:
+    with patch("features.pipeline.generate_features.fg_steps") as mock_fg_steps:
         # Mocking return values for steps.
         # ZenML steps return a StepInvocation or similar,
         # but if we mock them, they return whatever we set.
@@ -35,7 +35,7 @@ def test_generate_features_flow():
         assert result == ["step1_id", "step2_id"]
 
 def test_generate_features_multiple_wait_for():
-    with patch("features_pipeline.generate_features.fg_steps") as mock_fg_steps:
+    with patch("features.pipeline.generate_features.fg_steps") as mock_fg_steps:
         mock_raw = MagicMock(name="raw_docs_invocation")
         mock_clean = MagicMock(name="clean_docs_invocation")
         mock_step1 = MagicMock(name="step1_invocation", invocation_id="step1_id")
