@@ -37,6 +37,13 @@ matplotlib = "^3.10.7"
 plotly = "^6.3.1"
 scikit-learn = "1.7.2"
 
+[tool.poetry.group.harness.dependencies]
+# Evaluating loguru as logging handler.
+# See https://github.com/Delgan/loguru/releases
+loguru="^0.7.3"
+# GenAI package for the harness.
+google-genai = "^1.65.0"
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
