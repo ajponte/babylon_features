@@ -1,13 +1,10 @@
-from loguru import logger
-
-from agent.event import EventsManager, EventType
-from agent.listener import AgentEventListener
+from agent.event import EventManager, EventType
+from agent.listener import AgentEventListener, GeminiPromptEvaluation
 
 
-class GeminiEventsManager(EventsManager):
+class GeminiEventManager(EventManager):
     def __init__(self):
-        self.listeners: dict | None = None
-        super(EventsManager).__init__()
+        super(EventManager).__init__()
 
     @property
     def listeners(self) -> dict | None:
@@ -19,4 +16,8 @@ class GeminiEventsManager(EventsManager):
     def unsubscribe(self, event_type: EventType):
         self.listeners.pop(event_type)
 
-    def notify(self):
+    def notify(self, event_type: EventType, data):
+        """Notify the listener that a Gemini Agent action resulted in an Event being created."""
+        # Dispatch listeners
+        for listener in self.listeners:
+            listener.handle_event(data)

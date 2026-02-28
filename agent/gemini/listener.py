@@ -1,26 +1,13 @@
-from abc import ABC, abstractmethod
-from typing import  TypeVar
 from loguru import logger
+
+from agent.error import AgentConfigurationError
+from agent.event import Event
+from agent.listener import AgentEventListener
 import google.generativeai as gemini
 from google.generativeai import ChatSession
 
-from agent.error import AgentConfigurationError
 
-# Generic template for a model listener uses.
-LLMModel = TypeVar('LLMModel')
-
-from agent.event import Event
-
-
-class AgentEventListener(ABC):
-    """Listens for Agent events."""
-
-    @abstractmethod
-    def handle_event(self, event: Event) -> bool:
-        """Handle an event."""
-
-
-class GeminiPromptEvaluation(AgentEventListener):
+class GeminiPromptEvaluationListener(AgentEventListener):
     """Listener for triggering a prompt evaluation."""
     def __init__(self, chat_session: ChatSession):
         self._chat_session = chat_session
@@ -59,3 +46,12 @@ class GeminiPromptEvaluation(AgentEventListener):
         if not response:
             raise ValueError('No response determined from Gemini Agent chat.')
         return response.text
+
+
+class GeminiConfigurationErrorListener(AgentEventListener):
+    def handle_event(self, event: Event) -> bool:
+        event_data = event.data
+        event_metadata = event_data['metadata']
+        raise AgentConfigurationError(
+            message=event_metadata.message,
+        )

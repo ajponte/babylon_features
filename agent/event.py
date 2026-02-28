@@ -6,8 +6,13 @@ from agent.listener import AgentEventListener
 
 
 class EventType(StrEnum):
-    AGENT_TOOL_CALL_SUCCESS = 'agent-tool-call-success'
-    AGENT_TOOL_CALL_FAILURE = 'agent-tool-call-failure'
+    # Agent LLM model chat handling.
+    AGENT_CHAT_FAILURE = 'agent-chat-failure'
+    AGENT_CHAT_SUCCESS = 'agent-chat-failure'
+    AGENT_CHAT_REQUEST = 'agent-chat-request'
+
+    # Agent LLM model configuration.
+    AGENT_CONFIGURATION_FAILURE = 'agent-configuration-failure'
 
 class Event(ABC):
     """An Event which an Agent sends to the EventListener."""
@@ -21,8 +26,17 @@ class Event(ABC):
     def data(self, data: Any) -> None:
         """Set event data."""
 
+class GeminiEvent(Event):
+    """Wrapper for Gemini Agent event."""
+    def __init__(self, **event_data: dict[str, Any]):
+        self._data = event_data
 
-class EventsManager(ABC):
+    def data(self, **data) -> dict[str, Any]:
+        if not self._data:
+            raise ValueError("Gemini Event holds no data.")
+        return self._data
+
+class EventManager(ABC):
     def __init__(self):
         """
         Constructor.
@@ -39,8 +53,8 @@ class EventsManager(ABC):
         """Remove an Event Listener for an Event Type."""
 
     @abstractmethod
-    def notify(self):
-        """Notify the calling Agent of an the result of an action or event."""
+    def notify(self, event_type: EventType, data: Mapping):
+        """Notify the listener that an Agent action resulted in an Event being created."""
 
 # For now, an Event is just a virtual-type of a dict/map
 Event.register(dict[str, Any])

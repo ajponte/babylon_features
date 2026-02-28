@@ -1,10 +1,13 @@
+import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar, Type
 
-from agent.event import EventType, EventsManager
-from agent.listener import AgentEventListener
+from agent.event import EventManager
 
 Tool = TypeVar('Tool')
+UserPrompt = TypeVar('UserPrompt')
+AgentResponse = TypeVar('AgentResponse')
+AgentChatSession = TypeVar('AgentChatSession')
 
 
 class Agent(ABC, Generic[Tool]):
@@ -13,7 +16,7 @@ class Agent(ABC, Generic[Tool]):
         """
         Constructor.
         """
-        events: EventsManager
+        events: EventManager
 
     def run_tool(self, tool: Generic[Tool]) -> None:
         """
@@ -23,7 +26,7 @@ class Agent(ABC, Generic[Tool]):
         """
 
 
-class AgentHarness(ABC, Generic[Tool]):
+class AgentHarness(ABC, Generic[AgentChatSession, AgentResponse, Tool, UserPrompt]):
     """
     Observer object to monitor agent execution.
     """
@@ -31,23 +34,17 @@ class AgentHarness(ABC, Generic[Tool]):
         """
         Constructor.
         """
-        self.events: EventsManager
-        # Represents a pointer to some tool being executed.
-        self.current_tool_execution: Generic[Tool]
+        self.events: EventManager
 
     @abstractmethod
-    def configure_agent(self) -> Agent:
+    def execute(
+        self,
+        prompt: Type[UserPrompt],
+        chat_session: Type[AgentChatSession]
+    ) -> None:
         """
-        Configure and return a new Agent.
+        Execute the user's prompt query. Notify the listener via the EventManger as needed.
 
-        :return:
+        :param prompt: A prompt to execute.
+        :param chat_session: An open chat session with an Agent.
         """
-
-    @abstractmethod
-    def execute_tool_call(self, tool: Any) -> None:
-        """Have the agent execute the tool call."""
-        if self.current_tool_execution is not None:
-            del self.current_tool_execution
-        self.current_tool_execution = tool.name
-        self.events.notify(tool, tool.name)
-        return None
