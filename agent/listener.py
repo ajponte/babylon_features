@@ -1,14 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import  TypeVar
-from loguru import logger
-import google.generativeai as gemini
-from google.generativeai import ChatSession
-
-from agent.error import AgentConfigurationError
-
-# Generic template for a model listener uses.
-LLMModel = TypeVar('LLMModel')
-
 from agent.event import Event
 
 
@@ -18,44 +8,3 @@ class AgentEventListener(ABC):
     @abstractmethod
     def handle_event(self, event: Event) -> bool:
         """Handle an event."""
-
-
-class GeminiPromptEvaluation(AgentEventListener):
-    """Listener for triggering a prompt evaluation."""
-    def __init__(self, chat_session: ChatSession):
-        self._chat_session = chat_session
-
-    def handle_event(
-        self, event: Event
-    ) -> bool:
-        """Handle a Prompt Evaluation Event."""
-        event_data = event.data
-        tracing_id = event_data.get('tracingId')
-        try:
-            self.__gemini_evaluate_prompt(
-                prompt=event_data['prompt'],
-                chat_session=self._chat_session,
-            )
-        except Exception as e:
-            error_msg = (
-                'Encountered unknown exception while sending prompt to Agent. '
-                f'Tracing ID: {tracing_id}'
-            )
-            logger.debug(f'{error_msg} Error:{e}')
-            logger.info(error_msg)
-
-            return False
-
-        return True
-
-    @classmethod
-    def __gemini_evaluate_prompt(
-        cls,
-        prompt: str,
-        chat_session: ChatSession,
-    ) -> str:
-        """Invoke Gemini to evaluate the prompt and return the text response."""
-        response = chat_session.send_message(prompt)
-        if not response:
-            raise ValueError('No response determined from Gemini Agent chat.')
-        return response.text

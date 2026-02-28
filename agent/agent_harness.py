@@ -1,32 +1,32 @@
 import uuid
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, Type
+from typing import Generic, TypeVar, Type, Any, Callable, Dict
+from functools import wraps
 
 from agent.event import EventManager
 
-Tool = TypeVar('Tool')
+ToolType = TypeVar('ToolType')
 UserPrompt = TypeVar('UserPrompt')
 AgentResponse = TypeVar('AgentResponse')
 AgentChatSession = TypeVar('AgentChatSession')
 
 
-class Agent(ABC, Generic[Tool]):
+class Agent(ABC, Generic[ToolType]):
     """A generalized agent responsible for session."""
     def __init__(self):
         """
         Constructor.
         """
-        events: EventManager
+        self.events: EventManager
 
-    def run_tool(self, tool: Generic[Tool]) -> None:
+    @abstractmethod
+    def run_tool(self, tool_name: str, **kwargs) -> Any:
         """
         Execute a tool call.
-
-        :param tool: The tool to run.
         """
 
 
-class AgentHarness(ABC, Generic[AgentChatSession, AgentResponse, Tool, UserPrompt]):
+class AgentHarness(ABC, Generic[AgentChatSession, AgentResponse, ToolType, UserPrompt]):
     """
     Observer object to monitor agent execution.
     """
@@ -39,12 +39,38 @@ class AgentHarness(ABC, Generic[AgentChatSession, AgentResponse, Tool, UserPromp
     @abstractmethod
     def execute(
         self,
-        prompt: Type[UserPrompt],
-        chat_session: Type[AgentChatSession]
+        prompt: UserPrompt,
+        chat_session: AgentChatSession
     ) -> None:
         """
         Execute the user's prompt query. Notify the listener via the EventManger as needed.
-
-        :param prompt: A prompt to execute.
-        :param chat_session: An open chat session with an Agent.
         """
+
+def observe_tool(harness: 'AgentHarness'):
+    """
+    Decorator to wrap a tool function with harness events.
+    """
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            tool_name = func.__name__
+            # Attempt to send request event.
+            try:
+                # We need a way to call harness.send_tool_call_event but it's not in the base class.
+                # For now we'll assume the harness has it or we use a more generic notify.
+                if hasattr(harness, 'send_tool_call_event'):
+                    harness.send_tool_call_event(tool_name=tool_name, arguments=kwargs)
+            except Exception:
+                pass
+
+            try:
+                result = func(*args, **kwargs)
+                if hasattr(harness, 'send_tool_call_success'):
+                    harness.send_tool_call_success(tool_name=tool_name, result=result)
+                return result
+            except Exception as e:
+                if hasattr(harness, 'send_tool_call_failure'):
+                    harness.send_tool_call_failure(tool_name=tool_name, error=str(e))
+                raise e
+        return wrapper
+    return decorator

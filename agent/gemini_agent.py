@@ -4,22 +4,28 @@ from agent.gemini.listener import (
     GeminiPromptEvaluationListener,
     GeminiConfigurationErrorListener
 )
-from agent.gemini.load import  load_harness
+from agent.gemini.load import load_harness
 
 
 class GeminiAgent:
     """Abstraction for a Gemini Agent."""
-    def __init__(self, config: dict, tools: list):
-        self._harness = load_harness(config=config, tools=tools)
-        self._setup_listeners()
+    def __init__(self, config: dict, tools: list | None = None):
+        api_key = config.get('agent', {}).get('api_key')
+        self._harness = load_harness(config=config, tools=tools, api_key=api_key)
+        
+        enable_afc = config.get('agent', {}).get('enable_automatic_function_calling', False)
         self._chat_session = self._harness.start_chat_session(
-            enable_automatic_function_calling=config['agent']['enable_automatic_function_calling']
+            enable_automatic_function_calling=enable_afc
         )
+        
+        # Setup listeners after session is created as they might need it.
+        self._setup_listeners()
 
-    def chat(self, prompt: str, tracing_id: str|None = None):
-        self._harness.send_agent_chat_event(
+    def chat(self, prompt: str, tracing_id: str | None = None):
+        """Trigger evaluation via the Event Manager."""
+        self._harness.execute(
             prompt=prompt,
-            tracing_id=tracing_id
+            chat_session=self._chat_session
         )
 
     def _setup_listeners(self):

@@ -1,15 +1,14 @@
 from loguru import logger
-
-from agent.error import AgentConfigurationError
 from agent.event import Event
 from agent.listener import AgentEventListener
-import google.generativeai as gemini
-from google.generativeai import ChatSession
 
 
 class GeminiPromptEvaluationListener(AgentEventListener):
-    """Listener for triggering a prompt evaluation."""
-    def __init__(self, chat_session: ChatSession):
+    """Listener for triggering a prompt evaluation using google-genai."""
+    def __init__(self, chat_session: any):
+        """
+        :param chat_session: A google.genai chat session.
+        """
         self._chat_session = chat_session
 
     def handle_event(
@@ -17,20 +16,25 @@ class GeminiPromptEvaluationListener(AgentEventListener):
     ) -> bool:
         """Handle a Prompt Evaluation Event."""
         event_data = event.data
-        tracing_id = event_data.get('tracingId')
+        metadata = event_data.get('metadata', {})
+        tracing_id = metadata.get('tracingId')
+        prompt = event_data.get('prompt')
+        
+        if not prompt:
+            logger.warning(f"No prompt found in event data: {event_data}")
+            return False
+
         try:
             self.__gemini_evaluate_prompt(
-                prompt=event_data['prompt'],
+                prompt=prompt,
                 chat_session=self._chat_session,
             )
         except Exception as e:
             error_msg = (
-                'Encountered unknown exception while sending prompt to Agent. '
+                f'Encountered exception while evaluating prompt via Agent. '
                 f'Tracing ID: {tracing_id}'
             )
-            logger.debug(f'{error_msg} Error:{e}')
-            logger.info(error_msg)
-
+            logger.error(f'{error_msg} Error:{e}')
             return False
 
         return True
@@ -39,10 +43,11 @@ class GeminiPromptEvaluationListener(AgentEventListener):
     def __gemini_evaluate_prompt(
         cls,
         prompt: str,
-        chat_session: ChatSession,
+        chat_session: any,
     ) -> str:
-        """Invoke Gemini to evaluate the prompt and return the text response."""
-        response = chat_session.send_message(prompt)
+        """Invoke Gemini to evaluate the prompt."""
+        # In google-genai, we use chat_session.send(message=prompt)
+        response = chat_session.send(message=prompt)
         if not response:
             raise ValueError('No response determined from Gemini Agent chat.')
         return response.text
@@ -51,7 +56,6 @@ class GeminiPromptEvaluationListener(AgentEventListener):
 class GeminiConfigurationErrorListener(AgentEventListener):
     def handle_event(self, event: Event) -> bool:
         event_data = event.data
-        event_metadata = event_data['metadata']
-        raise AgentConfigurationError(
-            message=event_metadata.message,
-        )
+        error_message = event_data.get('errorMessage', 'Unknown configuration error')
+        logger.error(f"Gemini Configuration Error: {error_message}")
+        return True

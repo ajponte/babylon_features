@@ -42,8 +42,6 @@ scikit-learn = "1.7.2"
 # Evaluating loguru as logging handler.
 # See https://github.com/Delgan/loguru/releases
 loguru="^0.7.3"
-# GenAI package for the harness.
-google-genai = "^1.65.0"
 
 
 [build-system]
