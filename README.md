@@ -41,15 +41,15 @@ This project can be built as a Zip module artifact for deployment. The artifact 
 
 To build the artifact locally:
 ```shell
-tox -e build-artifact
+tox -e dist
 ```
-This will create `babylon.zip` in the root directory.
+This will create `babylon.zip` in the root directory, along with standard poetry distribution files in `dist/`.
 
 ### CI/CD
 The project uses GitHub Actions for CI/CD.
 
 - **babylon-features**: Runs on every push and pull request to `main`. It performs linting, formatting, and unit testing using `tox`.
-- **Babylon Features Artifact CD**: Runs when a version tag (e.g., `v1.0.0`) is pushed or manually triggered. It builds the `babylon.zip` artifact using `tox` and uploads it to GitHub Releases using `artifact_upload.py`.
+- **Babylon Features Artifact CD**: Runs when a version tag (e.g., `v1.0.0`) is pushed or manually triggered. It builds the `babylon.zip` artifact using `tox -e dist` and uploads it to GitHub Releases using `artifact_upload.py`.
 
 To manually trigger a deployment and upload to GitHub:
 ```shell

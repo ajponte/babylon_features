@@ -6,11 +6,11 @@ import requests
 
 def run_tox_build():
     """
-    Executes tox to build the artifact.
+    Executes tox to build the artifact using the dist environment.
     """
-    print("Building artifact with tox...")
+    print("Building artifact with tox -e dist...")
     try:
-        subprocess.run(["tox", "-e", "build-artifact"], check=True)
+        subprocess.run(["tox", "-e", "dist"], check=True)
         print("Tox build successful.")
     except subprocess.CalledProcessError as e:
         print(f"Error: Tox build failed with exit code {e.returncode}")
