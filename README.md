@@ -32,9 +32,31 @@ A local distribution of the package can be created either through
 ```
 or
 ```shell
- tos -e dist
+ tox -e dist
 ```
 Since the build is dependent on `poetry`, the commands are equivalent.
+
+### Artifact Deployment
+This project can be built as a Zip module artifact for deployment. The artifact includes the `features/` package.
+
+To build the artifact locally:
+```shell
+tox -e build-artifact
+```
+This will create `babylon.zip` in the root directory.
+
+### CI/CD
+The project uses GitHub Actions for CI/CD.
+
+- **babylon-features**: Runs on every push and pull request to `main`. It performs linting, formatting, and unit testing using `tox`.
+- **Babylon Features Artifact CD**: Runs when a version tag (e.g., `v1.0.0`) is pushed or manually triggered. It builds the `babylon.zip` artifact using `tox` and uploads it to GitHub Releases using `artifact_upload.py`.
+
+To manually trigger a deployment and upload to GitHub:
+```shell
+python artifact_upload.py --repo <owner>/<repo> --tag <tag>
+```
+Ensure `BABYLON_API_GITHUB_PAT_TOKEN` is set in your environment.
+
 
 ### Unit Tests
 This project uses `pytest`. You can invoke tests in a poetry environment, via

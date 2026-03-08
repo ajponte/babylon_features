@@ -211,3 +211,6 @@ __marimo__/
 
 # Chroma local DB
 chromadb/
+
+# Any zipped artifacts
+*.zip
