@@ -1,0 +1,16 @@
+settings:
+  docker:
+    # This image is built by babylon-features.
+    parent_image: babylon-features:latest
+    skip_build: True
+  orchestrator:
+    synchronous: true
+
+parameters:
+  # Data ETL & Feature engineering pipelines parameters
+  # Add config as needed
+  # Generate instruct dataset pipeline parameters
+  test_split_size: 0.1
+  push_to_huggingface: false
+  dataset_id: 'todo'
+  mock: true

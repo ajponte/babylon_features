@@ -112,16 +112,31 @@ Used when `VECTOR_DB_TYPE=qdrant`.
 * `QDRANT_PORT`: Port of the Qdrant service (default: `6333`).
 * `QDRANT_COLLECTION`: Name of the Qdrant collection.
 
-## Vectorstore Visualization
-Running `poetry run python visualize.py` will generate a 2d scatterplot
-of the vectors.
-See `visualize.ChartType` for supported charts.
+## RAG Pipeline Invocation
+The ZenML RAG pipeline can be invoked using the `run-pipeline` script. This script allows for running different parts of the pipeline with various configurations.
 
-![image](scatterplot2d.png)
+### Configuration
+Local runs should include a `.env` file in the project root to load necessary environment variables.
 
-![image](scatterplot3d.png)
+### Local Execution
+To run the feature engineering pipeline locally:
+```shell
+poetry run run-pipeline --run-feature-engineering
+```
 
-# Gemini Agent Configuration
+To run without caching:
+```shell
+poetry run run-pipeline --run-feature-engineering --no-cache
+```
+
+Available options:
+- `--no-cache`: Disable ZenML caching.
+- `--run-feature-engineering`: Run the feature engineering pipeline.
+- `--run-end-to-end-data`: Run the full data pipeline.
+- ... (see `poetry run run-pipeline --help` for all options)
+
+### Unit Tests
+...
 
 The `gemeni` directory contains the configuration files for the Gemini agent.
 
