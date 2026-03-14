@@ -21,15 +21,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+      - name: Setup environment
+        uses: ./.github/actions/setup-tox
         with:
           python-version: "3.13"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install tox requests poetry
+          install-poetry: "true"
 
       - name: Run Artifact Upload Script
         env:
