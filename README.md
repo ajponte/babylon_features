@@ -43,13 +43,21 @@ To build the artifact locally:
 ```shell
 tox -e dist
 ```
-This will create `babylon.zip` in the root directory, along with standard poetry distribution files in `dist/`.
+This will create `babylon-features.zip` in the root directory, along with standard poetry distribution files in `dist/`.
 
 ### CI/CD
-The project uses GitHub Actions for CI/CD.
+The project uses GitHub Actions for CI/CD, leveraging a modular architecture for efficiency and maintainability.
 
-- **babylon-features**: Runs on every push and pull request to `main`. It performs linting, formatting, and unit testing using `tox`.
-- **Babylon Features Artifact CD**: Runs when a version tag (e.g., `v1.0.0`) is pushed or manually triggered. It builds the `babylon.zip` artifact using `tox -e dist` and uploads it to GitHub Releases using `artifact_upload.py`.
+- **babylon-features**: A modular CI pipeline that runs on every push and pull request to `main`. It is split into parallel jobs to provide faster feedback:
+    - **lint**: Performs static analysis using `pylint`.
+    - **format**: Verifies PEP-8 compliance using `black`.
+    - **typecheck**: Enforces static typing via `mypy`.
+    - **test**: Executes the test suite using `pytest`.
+- **Babylon Features Artifact CD**: An automation pipeline triggered by version tags (e.g., `v*`) or manual dispatch. It builds a distribution and a ZIP artifact (`tox -e dist`) and uploads them to GitHub Releases.
+
+#### Reusable Actions
+To ensure consistency across workflows, shared setup logic is encapsulated in a local composite action:
+- **.github/actions/setup-tox**: Handles Python environment setup, caches the `.tox` directory for faster subsequent runs, and installs core dependencies (`tox`, `poetry`).
 
 To manually trigger a deployment and upload to GitHub:
 ```shell
