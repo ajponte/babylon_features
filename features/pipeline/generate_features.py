@@ -7,9 +7,13 @@ from features.steps import feature_generation as fg_steps
 
 
 @pipeline
-def generate_features(wait_for: str | list[str] | None = None) -> list[str]:
+def generate_features(
+    wait_for: str | list[str] | None = None,
+    mock: bool = False,
+    **kwargs,
+) -> list[str]:
     """Entry point to the zenml pipeline for generating Babylon features."""
-    raw_documents = fg_steps.query_data_lake(after=wait_for)
+    raw_documents = fg_steps.query_data_lake(after=wait_for, mock=mock)
     clean_documents = fg_steps.clean_documents(raw_documents)
 
     # Load cleaned docs to vector db.

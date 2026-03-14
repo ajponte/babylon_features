@@ -55,3 +55,6 @@ Please wait for user input.
 ## Planning
 When planning, write your plan to `<GIT_BRANCH_NAME>.md`, where `<GIT_BRANCH_NAME>` is the name of the current local git branch.
 Ask the user to validate the plan before executing.
+
+## Readme
+Always keep the `README.md` up-to-date with relevant information.
