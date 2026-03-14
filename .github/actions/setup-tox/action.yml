@@ -14,12 +14,12 @@ runs:
   using: "composite"
   steps:
     - name: Set up Python ${{ inputs.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ inputs.python-version }}
 
     - name: Cache tox environments
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: .tox
         key: ${{ runner.os }}-python-${{ inputs.python-version }}-tox-${{ hashFiles('pyproject.toml', 'tox.ini', 'poetry.lock') }}
