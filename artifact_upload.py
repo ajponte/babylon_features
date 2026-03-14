@@ -45,8 +45,8 @@ def create_release(repo: str, tag: str, pat_token: str):
     }
     data = {
         "tag_name": tag,
-        "name": f"Babylon Artifact {tag}",
-        "body": "Automatically generated Babylon artifact.",
+        "name": f"Babylon Features Artifact {tag}",
+        "body": "Automatically generated Babylon features artifact.",
         "draft": False,
         "prerelease": False
     }
@@ -88,15 +88,15 @@ def upload_artifact_to_release(repo: str, release_id: int, artifact_path: str, p
 
 def main():
     """
-    Main entry point for building and uploading Babylon artifacts to GitHub Releases.
+    Main entry point for building and uploading Babylon Features artifacts to GitHub Releases.
     The script:
     1. Parses command-line arguments for repo, tag, and GitHub PAT token.
     2. Determines the tag to use (defaults to 'latest').
-    3. Runs 'tox -e build-artifact' to generate 'babylon.zip' unless --skip-build is set.
+    3. Runs 'tox -e dist' to generate 'babylon-features.zip' unless --skip-build is set.
     4. Fetches or creates a GitHub Release for the specified tag.
-    5. Uploads 'babylon.zip' as a release asset (overwriting if it already exists).
+    5. Uploads 'babylon-features.zip' as a release asset (overwriting if it already exists).
     """
-    parser = argparse.ArgumentParser(description="Build and upload Babylon artifact to GitHub.")
+    parser = argparse.ArgumentParser(description="Build and upload Babylon Features artifact to GitHub.")
     parser.add_argument("--repo", required=True, help="GitHub repository (e.g., owner/repo)")
     parser.add_argument("--tag", help="Release tag to upload to (defaults to 'latest' if not provided)")
     parser.add_argument("--pat-token", default=os.environ.get("BABYLON_API_GITHUB_PAT_TOKEN"), help="GitHub PAT token")
@@ -118,7 +118,7 @@ def main():
         print("Error: GitHub PAT token not provided. Set BABYLON_API_GITHUB_PAT_TOKEN or use --pat-token.")
         sys.exit(1)
 
-    artifact_path = "babylon.zip"
+    artifact_path = "babylon-features.zip"
 
     # Step 1: Build the artifact using tox as the source of truth
     if not args.skip_build:
