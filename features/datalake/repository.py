@@ -22,15 +22,15 @@ class TransactionDto:
         record_id: str,
         amount: float,
         posting_date: date,
-        details: str,
-        tx_type: str,
-        description: str,
+        details: str | None = None,
+        tx_type: str = "",
+        description: str = "",
         check_num: str | None = "",
     ):
         self._record_id = record_id
         self._amount = amount
         self._posting_date = posting_date
-        self._details = details
+        self._details = "" if details is None else details
         self._tx_type = tx_type
         self._description = description
         self._check_num = check_num
@@ -73,13 +73,11 @@ class TransactionDto:
         """Return the check number of the datalake transaction document."""
         return self._check_num
 
-    # todo: fix string interpolation error.
-    # pylint:disable=invalid-str-returned
-    def __str__(self):
-        return str(
-            f"(id, {self.id}, ",
-            f"(amount, {self.amount}), ",
-            f"(posting_date, {self.posting_date})",
+    def __str__(self) -> str:
+        return (
+            f"TransactionDto(id='{self.id}', amount={self.amount}, "
+            f"posting_date={self.posting_date}, description='{self.description}', "
+            f"type='{self.transaction_type}', check_num='{self.check_num}')"
         )
 
     def __check_required_fields(self) -> None:
@@ -87,9 +85,26 @@ class TransactionDto:
 
         :raise RAGError: If a required field is not present.
         """
-        if not all([self.id, self.posting_date, self.description, self.details]):
+        if not all([self.id, self.posting_date, self.description]):
             message = "Not all required fields are present for DTO"
             raise RAGError(message)
+
+
+def _apply_limit(cursor, limit: int | None):
+    """Apply query limit to a PyMongo cursor if specified.
+
+    :param cursor: PyMongo cursor or iterable.
+    :param limit: Maximum number of records to return.
+    :return: Limited cursor or unchanged cursor if limit is None.
+    :raise ValueError: If limit is less than or equal to 0.
+    """
+    if limit is None:
+        return cursor
+    if limit <= 0:
+        raise ValueError(f"Limit must be a positive integer, got: {limit}")
+    if cursor is None:
+        return None
+    return cursor.limit(limit)
 
 
 class BaseRepository:
@@ -109,17 +124,18 @@ class BaseRepository:
         doc = self._collection.find_one({"_id": ObjectId(_id)})
         return self._mapper.to_domain(doc) if doc else None
 
-    def get_all(self) -> list[TransactionDto]:
+    def get_all(self, limit: int | None = None) -> list[TransactionDto]:
         """Return all documents from the collection."""
-        results = [self._mapper.to_domain(doc) for doc in self._collection.find({})]
+        cursor = _apply_limit(self._collection.find({}), limit)
+        results = [self._mapper.to_domain(doc) for doc in cursor]
         return [r for r in results if r is not None]
 
-    def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
+    def get_by_filter(
+        self, filter_criteria: dict, limit: int | None = None
+    ) -> list[TransactionDto]:
         """Apply a filter and return matching documents from the collection."""
-        results = [
-            self._mapper.to_domain(doc)
-            for doc in self._collection.find(filter_criteria)
-        ]
+        cursor = _apply_limit(self._collection.find(filter_criteria), limit)
+        results = [self._mapper.to_domain(doc) for doc in cursor]
         return [r for r in results if r is not None]
 
     @property
@@ -139,9 +155,12 @@ class TransactionRepository(BaseRepository):
         doc = self._collection.find_one({"_id": ObjectId(transaction_id)})
         return self._mapper.to_domain(doc) if doc else None
 
-    def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
+    def get_by_filter(
+        self, filter_criteria: dict, limit: int | None = None
+    ) -> list[TransactionDto]:
         """Apply a filter and return matching documents from the collection."""
-        docs: list[dict] = list(self._collection.find(filter_criteria) or [])
+        cursor = _apply_limit(self._collection.find(filter_criteria), limit)
+        docs: list[dict] = list(cursor or [])
         results = [self._mapper.to_domain(doc) for doc in docs]
         return [r for r in results if r is not None]
 
