@@ -5,8 +5,10 @@ Datalake records repository pattern
 """
 
 from datetime import date
-from pymongo.collection import Collection
+from typing import Any
 from bson import ObjectId
+from bson.errors import InvalidId
+from pymongo.collection import Collection
 
 from features.error import RAGError
 from features.utils import convert_string_to_date, convert_date_to_string
@@ -22,15 +24,15 @@ class TransactionDto:
         record_id: str,
         amount: float,
         posting_date: date,
-        details: str,
-        tx_type: str,
-        description: str,
+        details: str | None = None,
+        tx_type: str = "",
+        description: str = "",
         check_num: str | None = "",
     ):
         self._record_id = record_id
         self._amount = amount
         self._posting_date = posting_date
-        self._details = details
+        self._details = "" if details is None else details
         self._tx_type = tx_type
         self._description = description
         self._check_num = check_num
@@ -73,13 +75,11 @@ class TransactionDto:
         """Return the check number of the datalake transaction document."""
         return self._check_num
 
-    # todo: fix string interpolation error.
-    # pylint:disable=invalid-str-returned
-    def __str__(self):
-        return str(
-            f"(id, {self.id}, ",
-            f"(amount, {self.amount}), ",
-            f"(posting_date, {self.posting_date})",
+    def __str__(self) -> str:
+        return (
+            f"TransactionDto(id='{self.id}', amount={self.amount}, "
+            f"posting_date={self.posting_date}, description='{self.description}', "
+            f"type='{self.transaction_type}', check_num='{self.check_num}')"
         )
 
     def __check_required_fields(self) -> None:
@@ -87,15 +87,36 @@ class TransactionDto:
 
         :raise RAGError: If a required field is not present.
         """
-        if not all([self.id, self.posting_date, self.description, self.details]):
+        if not all([self.id, self.posting_date, self.description]):
             message = "Not all required fields are present for DTO"
             raise RAGError(message)
+
+
+def _apply_limit(cursor: Any, limit: int | None) -> Any:
+    """Apply query limit to a PyMongo cursor if specified.
+
+    :param cursor: PyMongo cursor or iterable.
+    :param limit: Maximum number of records to return.
+    :return: Limited cursor or empty list if cursor is None.
+    :raise TypeError: If limit is not an integer or is a boolean.
+    :raise ValueError: If limit is less than or equal to 0.
+    """
+    if limit is not None:
+        if isinstance(limit, bool) or not isinstance(limit, int):
+            raise TypeError(f"Limit must be an integer, got: {type(limit).__name__}")
+        if limit <= 0:
+            raise ValueError(f"Limit must be a positive integer, got: {limit}")
+    if cursor is None:
+        return []
+    if limit is None:
+        return cursor
+    return cursor.limit(limit)
 
 
 class BaseRepository:
     """Represents a Mongo Repository Collection."""
 
-    def __init__(self, collection: Collection, mapper):
+    def __init__(self, collection: Collection, mapper: Any) -> None:
         """Constructor.
 
         :param collection: The mongo collection.
@@ -106,44 +127,32 @@ class BaseRepository:
 
     def get_by_id(self, _id: str) -> TransactionDto | None:
         """Return a document from the collection by document ID."""
-        doc = self._collection.find_one({"_id": ObjectId(_id)})
+        if not _id or not ObjectId.is_valid(_id):
+            return None
+        try:
+            doc = self._collection.find_one({"_id": ObjectId(_id)})
+        except (InvalidId, TypeError):
+            return None
         return self._mapper.to_domain(doc) if doc else None
 
-    def get_all(self) -> list[TransactionDto]:
+    def get_all(self, limit: int | None = None) -> list[TransactionDto]:
         """Return all documents from the collection."""
-        results = [self._mapper.to_domain(doc) for doc in self._collection.find({})]
+        cursor = _apply_limit(self._collection.find({}), limit)
+        results = [self._mapper.to_domain(doc) for doc in cursor or []]
         return [r for r in results if r is not None]
 
-    def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
+    def get_by_filter(
+        self, filter_criteria: dict, limit: int | None = None
+    ) -> list[TransactionDto]:
         """Apply a filter and return matching documents from the collection."""
-        results = [
-            self._mapper.to_domain(doc)
-            for doc in self._collection.find(filter_criteria)
-        ]
+        cursor = _apply_limit(self._collection.find(filter_criteria), limit)
+        results = [self._mapper.to_domain(doc) for doc in cursor or []]
         return [r for r in results if r is not None]
 
     @property
-    def collection(self):
+    def collection(self) -> Collection:
         """Return the Mongo Collection this Repository points to."""
         return self._collection
-
-
-class TransactionRepository(BaseRepository):
-    """Represents the transactions collection."""
-
-    def __init__(self, collection: Collection):
-        super().__init__(collection=collection, mapper=TransactionMapper)
-
-    def get_by_id(self, transaction_id: str) -> TransactionDto | None:
-        """Return a transaction by document ID."""
-        doc = self._collection.find_one({"_id": ObjectId(transaction_id)})
-        return self._mapper.to_domain(doc) if doc else None
-
-    def get_by_filter(self, filter_criteria: dict) -> list[TransactionDto]:
-        """Apply a filter and return matching documents from the collection."""
-        docs: list[dict] = list(self._collection.find(filter_criteria) or [])
-        results = [self._mapper.to_domain(doc) for doc in docs]
-        return [r for r in results if r is not None]
 
 
 class TransactionMapper:
@@ -190,3 +199,10 @@ class TransactionMapper:
             "Type": transaction.transaction_type,
             "CheckOrSlipNum": transaction.check_num,
         }
+
+
+class TransactionRepository(BaseRepository):
+    """Represents the transactions collection."""
+
+    def __init__(self, collection: Collection) -> None:
+        super().__init__(collection=collection, mapper=TransactionMapper)
