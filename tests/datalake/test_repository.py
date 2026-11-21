@@ -15,12 +15,35 @@ from features.datalake.repository import (
     TransactionMapper,
     TransactionRepository,
     _apply_limit,
+    _first_present,
     coerce_amount,
     coerce_date,
 )
 from features.error import RAGError
 
 VALID_OBJECT_ID = "507f1f77bcf86cd799439011"
+
+
+def assert_dto_state(
+    dto: TransactionDto | None,
+    *,
+    record_id: str,
+    amount: float,
+    posting_date: date,
+    description: str,
+    details: str = "",
+    tx_type: str = "UNKNOWN",
+    check_num: str | None = "",
+) -> None:
+    """Focused assertion helper verifying complete TransactionDto state."""
+    assert dto is not None
+    assert dto.id == record_id
+    assert dto.amount == amount
+    assert dto.posting_date == posting_date
+    assert dto.description == description
+    assert dto.details == details
+    assert dto.transaction_type == tx_type
+    assert dto.check_num == check_num
 
 
 def new_valid_dto(**overrides: Any) -> TransactionDto:
@@ -344,6 +367,69 @@ def test_repository_get_by_id_invalid_id_returns_none(
     mock_collection.find_one.assert_not_called()
 
 
+def test_first_present_returns_first_matching_key() -> None:
+    """Verify _first_present returns value of first existing non-None key."""
+    doc = {"a": None, "b": 42, "c": 99}
+    assert _first_present(doc, "a", "b", "c") == 42
+
+
+def test_first_present_preserves_falsy_values() -> None:
+    """Verify _first_present preserves falsy non-None values without fallback."""
+    assert _first_present({"amount": 0}, "amount", "Amount") == 0
+    assert _first_present({"amount": 0.0}, "amount", "Amount") == 0.0
+    assert _first_present({"desc": ""}, "desc", "Description") == ""
+    assert _first_present({"active": False}, "active") is False
+
+
+def test_first_present_falls_back_to_default() -> None:
+    """Verify _first_present returns default when no key matches or all are None."""
+    assert _first_present({}, "a", "b", default="fallback") == "fallback"
+    assert _first_present({"a": None}, "a", default="fallback") == "fallback"
+
+
+@pytest.mark.parametrize(
+    ("val", "expected"),
+    [
+        (datetime(2025, 5, 1, 10, 0), date(2025, 5, 1)),
+        (date(2025, 5, 1), date(2025, 5, 1)),
+        (" 2025-05-01 ", date(2025, 5, 1)),
+        ("05/01/2025", date(2025, 5, 1)),
+        ("2024-02-29", date(2024, 2, 29)),
+        ("2025-05-01T10:00:00+00:00", date(2025, 5, 1)),
+        ("2025-05-01T10:00:00Z", date(2025, 5, 1)),
+        ("invalid", None),
+        ("2023-02-29", None),
+        ("", None),
+        ("   ", None),
+        (None, None),
+        (12345, None),
+    ],
+)
+def test_coerce_date_standalone(val: Any, expected: date | None) -> None:
+    """Verify coerce_date handles datetimes, dates, strings, leap years, timezones, and fallbacks."""
+    assert coerce_date(val) == expected
+
+
+@pytest.mark.parametrize(
+    ("val", "expected"),
+    [
+        (100, 100.0),
+        (42.5, 42.5),
+        ("42.50", 42.5),
+        ("$1,234.56", 1234.56),
+        ("-$1,234.56", -1234.56),
+        ("- $50.00", -50.0),
+        ("($1,234.56)", -1234.56),
+        ("(42.50)", -42.5),
+        (0, 0.0),
+        ("0.00", 0.0),
+    ],
+)
+def test_coerce_amount_valid_matrix(val: Any, expected: float) -> None:
+    """Verify coerce_amount converts numeric, currency, accounting, and negative formats."""
+    assert coerce_amount(val) == expected
+
+
 def test_transaction_mapper_camel_case_chase() -> None:
     """Verify canonical Chase doc with datetime postingDate and camelCase keys maps to valid DTO."""
     doc = {
@@ -357,14 +443,16 @@ def test_transaction_mapper_camel_case_chase() -> None:
     }
     dto = TransactionMapper.to_domain(doc)
 
-    assert dto is not None
-    assert dto.id == VALID_OBJECT_ID
-    assert dto.amount == 42.50
-    assert dto.posting_date == date(2025, 10, 22)
-    assert dto.description == "Supermarket Store #42"
-    assert dto.details == "grocery purchase"
-    assert dto.transaction_type == "DEBIT"
-    assert dto.check_num == "001"
+    assert_dto_state(
+        dto,
+        record_id=VALID_OBJECT_ID,
+        amount=42.50,
+        posting_date=date(2025, 10, 22),
+        description="Supermarket Store #42",
+        details="grocery purchase",
+        tx_type="DEBIT",
+        check_num="001",
+    )
 
 
 def test_transaction_mapper_pascal_case_legacy() -> None:
@@ -372,14 +460,16 @@ def test_transaction_mapper_pascal_case_legacy() -> None:
     doc = new_raw_doc()
     dto = TransactionMapper.to_domain(doc)
 
-    assert dto is not None
-    assert dto.id == VALID_OBJECT_ID
-    assert dto.amount == 42.50
-    assert dto.posting_date == date(2023, 1, 15)
-    assert dto.description == "Supermarket Store #42"
-    assert dto.details == "grocery purchase"
-    assert dto.transaction_type == "DEBIT"
-    assert dto.check_num == "001"
+    assert_dto_state(
+        dto,
+        record_id=VALID_OBJECT_ID,
+        amount=42.50,
+        posting_date=date(2023, 1, 15),
+        description="Supermarket Store #42",
+        details="grocery purchase",
+        tx_type="DEBIT",
+        check_num="001",
+    )
 
 
 @pytest.mark.parametrize(
@@ -413,13 +503,17 @@ def test_transaction_mapper_date_coercion_matrix(
         (42, 42.0),
         (42.50, 42.5),
         ("$1,234.56", 1234.56),
+        ("($1,234.56)", -1234.56),
+        ("(42.50)", -42.5),
+        ("-$1,234.56", -1234.56),
+        ("- $50.00", -50.0),
         (0, 0.0),
     ],
 )
 def test_transaction_mapper_amount_coercion(
     amount_input: Any, expected_amount: float
 ) -> None:
-    """Verify amount coercion handles int, float, currency strings, and zero without fallback."""
+    """Verify amount coercion handles int, float, currency strings, accounting negatives, and zero."""
     doc = new_raw_doc(Amount=amount_input)
     dto = TransactionMapper.to_domain(doc)
 
@@ -437,14 +531,50 @@ def test_transaction_mapper_missing_optional_fields() -> None:
     }
     dto = TransactionMapper.to_domain(doc)
 
-    assert dto is not None
-    assert dto.id == VALID_OBJECT_ID
-    assert dto.amount == 50.0
-    assert dto.posting_date == date(2025, 5, 1)
-    assert dto.description == "Minimal Transaction"
-    assert dto.details == ""
-    assert dto.transaction_type == "UNKNOWN"
-    assert dto.check_num == ""
+    assert_dto_state(
+        dto,
+        record_id=VALID_OBJECT_ID,
+        amount=50.0,
+        posting_date=date(2025, 5, 1),
+        description="Minimal Transaction",
+        details="",
+        tx_type="UNKNOWN",
+        check_num="",
+    )
+
+
+def test_transaction_mapper_resolves_id_fallback() -> None:
+    """Verify mapper resolves 'id' key when '_id' is absent."""
+    doc = {
+        "id": "tx-custom-id-99",
+        "amount": 10.0,
+        "postingDate": date(2025, 1, 1),
+        "description": "Fallback ID Test",
+    }
+    dto = TransactionMapper.to_domain(doc)
+
+    assert_dto_state(
+        dto,
+        record_id="tx-custom-id-99",
+        amount=10.0,
+        posting_date=date(2025, 1, 1),
+        description="Fallback ID Test",
+        details="",
+        tx_type="UNKNOWN",
+        check_num="",
+    )
+
+
+@pytest.mark.parametrize("corrupt_id", [None, "", "   ", "None"])
+def test_transaction_mapper_rejects_empty_or_none_id(corrupt_id: Any) -> None:
+    """Verify mapper returns None when document ID is None, whitespace, or literal 'None'."""
+    doc = {
+        "_id": corrupt_id,
+        "amount": 10.0,
+        "postingDate": date(2025, 1, 1),
+        "description": "Invalid ID Test",
+    }
+    assert TransactionMapper.to_domain(doc) is None
 
 
 @pytest.mark.parametrize(
@@ -485,21 +615,29 @@ def test_transaction_mapper_invalid_record_returns_none(
 
 
 @pytest.mark.parametrize(
-    "invalid_value",
+    ("invalid_val", "expected_pattern"),
     [
-        None,
-        True,
-        False,
-        "not-a-number",
-        "$not-a-number",
-        "",
-        [],
+        (None, "Cannot coerce NoneType to float"),
+        (True, "Cannot coerce bool to float"),
+        (False, "Cannot coerce bool to float"),
+        ("not-a-number", r"Cannot coerce string 'not-a-number' to float"),
+        ("$not-a-number", r"Cannot coerce string '\$not-a-number' to float"),
+        ("NaN", r"Amount cannot be NaN or Infinite, got: 'NaN'"),
+        ("inf", r"Amount cannot be NaN or Infinite, got: 'inf'"),
+        ("-inf", r"Amount cannot be NaN or Infinite, got: '-inf'"),
+        (float("nan"), r"Amount cannot be NaN or Infinite, got: nan"),
+        (float("inf"), r"Amount cannot be NaN or Infinite, got: inf"),
+        ("", "Amount string cannot be empty"),
+        ("   ", "Amount string cannot be empty"),
+        ([], "Cannot coerce list to float"),
     ],
 )
-def test_coerce_amount_rejects_unsupported_type(invalid_value: Any) -> None:
-    """Verify coerce_amount raises ValueError for None, booleans, and invalid strings."""
-    with pytest.raises(ValueError):
-        coerce_amount(invalid_value)
+def test_coerce_amount_rejects_unsupported_type(
+    invalid_val: Any, expected_pattern: str
+) -> None:
+    """Verify coerce_amount raises ValueError matching expected pattern for invalid inputs."""
+    with pytest.raises(ValueError, match=expected_pattern):
+        coerce_amount(invalid_val)
 
 
 def test_to_document_snapshot() -> None:

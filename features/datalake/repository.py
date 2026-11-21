@@ -4,7 +4,10 @@
 Datalake records repository pattern
 """
 
+from collections.abc import Mapping
 from datetime import date, datetime
+import logging
+import math
 from typing import Any
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -14,6 +17,8 @@ from features.error import RAGError
 from features.utils import convert_date_to_string
 
 DEFAULT_DATE_STRING_FORMAT = "%m/%d/%Y"
+
+logger = logging.getLogger(__name__)
 
 
 class TransactionDto:
@@ -142,7 +147,7 @@ class BaseRepository:
         return [r for r in results if r is not None]
 
     def get_by_filter(
-        self, filter_criteria: dict, limit: int | None = None
+        self, filter_criteria: Mapping[str, Any], limit: int | None = None
     ) -> list[TransactionDto]:
         """Apply a filter and return matching documents from the collection."""
         cursor = _apply_limit(self._collection.find(filter_criteria), limit)
@@ -155,10 +160,10 @@ class BaseRepository:
         return self._collection
 
 
-def _first_present(doc: dict, *keys: str, default: Any = None) -> Any:
+def _first_present(doc: Mapping[str, Any], *keys: str, default: Any = None) -> Any:
     """Return doc[key] for the first key that exists and is not None; otherwise default.
 
-    :param doc: Dictionary to search for keys.
+    :param doc: Mapping to search for keys.
     :param keys: Ordered candidate keys to check.
     :param default: Fallback value returned if no key is present with a non-None value.
     :return: Value of first present, non-None key, or default.
@@ -167,6 +172,24 @@ def _first_present(doc: dict, *keys: str, default: Any = None) -> Any:
         if key in doc and doc[key] is not None:
             return doc[key]
     return default
+
+
+def _parse_date_string(clean_val: str, default_format: str) -> date | None:
+    """Attempt parsing cleaned string across candidate formats and ISO format."""
+    candidate_formats: list[str] = [default_format]
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"):
+        if fmt not in candidate_formats:
+            candidate_formats.append(fmt)
+
+    for fmt in candidate_formats:
+        try:
+            return datetime.strptime(clean_val, fmt).date()
+        except (ValueError, TypeError):
+            continue
+    try:
+        return datetime.fromisoformat(clean_val.replace("Z", "+00:00")).date()
+    except (ValueError, TypeError):
+        return None
 
 
 def coerce_date(
@@ -183,38 +206,52 @@ def coerce_date(
     if isinstance(value, date):
         return value
     if isinstance(value, str):
-        formats = (default_format, "%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d")
-        for fmt in formats:
-            try:
-                return datetime.strptime(value, fmt).date()
-            except (ValueError, TypeError):
-                continue
-        try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
-        except (ValueError, TypeError):
-            return None
+        clean_val = value.strip()
+        if clean_val:
+            return _parse_date_string(clean_val, default_format)
     return None
 
 
 def coerce_amount(value: Any) -> float:
-    """Coerce int, float, or currency string like '$1,234.56' to float.
+    """Coerce int, float, or currency string to a finite float.
 
-    Raises ValueError otherwise.
+    Supports currency symbols, commas, negative signs, and accounting parentheses ($123.45).
+    Raises ValueError on boolean, non-numeric types, malformed strings, NaN, or Inf.
 
     :param value: Input amount value.
     :return: Float representation of the amount.
-    :raise ValueError: If the value cannot be coerced to float or is a bool.
+    :raise ValueError: If value cannot be coerced to float, is a bool, NaN, or Inf.
     """
     if isinstance(value, bool):
         raise ValueError("Cannot coerce bool to float")
     if isinstance(value, (int, float)):
-        return float(value)
+        amount = float(value)
+        if math.isnan(amount) or math.isinf(amount):
+            raise ValueError(f"Amount cannot be NaN or Infinite, got: {value}")
+        return amount
     if isinstance(value, str):
-        cleaned = value.replace("$", "").replace(",", "").strip()
+        cleaned = value.strip().replace("$", "").replace(",", "")
+        if not cleaned:
+            raise ValueError("Amount string cannot be empty")
+
+        is_negative = False
+        if cleaned.startswith("(") and cleaned.endswith(")"):
+            is_negative = True
+            cleaned = cleaned[1:-1].strip()
+        elif cleaned.startswith("-"):
+            is_negative = True
+            cleaned = cleaned[1:].strip()
+
         try:
-            return float(cleaned)
+            amount = float(cleaned)
         except ValueError as err:
             raise ValueError(f"Cannot coerce string '{value}' to float") from err
+
+        if math.isnan(amount) or math.isinf(amount):
+            raise ValueError(f"Amount cannot be NaN or Infinite, got: '{value}'")
+
+        return -amount if is_negative else amount
+
     raise ValueError(f"Cannot coerce {type(value).__name__} to float")
 
 
@@ -223,10 +260,18 @@ class TransactionMapper:
 
     @staticmethod
     def to_domain(
-        doc: dict, date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT
+        doc: Mapping[str, Any],
+        date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT,
     ) -> TransactionDto | None:
         """Convert a mongo doc, represented by key/value pairs, into a transaction DTO."""
         try:
+            raw_id = _first_present(doc, "_id", "id")
+            if raw_id is None:
+                return None
+            record_id = str(raw_id).strip()
+            if not record_id or record_id == "None":
+                return None
+
             fmt = date_string_format or DEFAULT_DATE_STRING_FORMAT
             posting_date = coerce_date(
                 _first_present(doc, "postingDate", "PostingDate"),
@@ -234,8 +279,9 @@ class TransactionMapper:
             )
             if posting_date is None:
                 return None
+
             return TransactionDto(
-                record_id=str(doc["_id"]),
+                record_id=record_id,
                 amount=coerce_amount(_first_present(doc, "amount", "Amount")),
                 posting_date=posting_date,
                 description=_first_present(
@@ -254,15 +300,29 @@ class TransactionMapper:
                     default="",
                 ),
             )
-        except Exception:
-            # Skip invalid records.
+        except (ValueError, TypeError, KeyError, RAGError) as err:
+            doc_id = (
+                _first_present(doc, "_id", "id") if isinstance(doc, Mapping) else None
+            )
+            logger.debug("Skipping unparseable transaction record %s: %s", doc_id, err)
+            return None
+        except Exception as err:
+            doc_id = (
+                _first_present(doc, "_id", "id") if isinstance(doc, Mapping) else None
+            )
+            logger.warning(
+                "Unexpected error mapping transaction record %s: %s",
+                doc_id,
+                err,
+                exc_info=True,
+            )
             return None
 
     @staticmethod
     def to_document(
         transaction: TransactionDto,
         date_string_format: str | None = DEFAULT_DATE_STRING_FORMAT,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Convert a Transaction DTO to a key/value pair."""
         return {
             "_id": ObjectId(transaction.id),
