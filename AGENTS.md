@@ -49,6 +49,35 @@ Agents must adhere to the canonical technical specifications in `docs/specs/` be
 - **[Master Architecture Catalog](docs/specs/README.md)**: Catalog index, end-to-end data flow, cross-cutting invariants, and repository directory structure.
 - **[Datalake Storage & Repository Specification](docs/specs/datalake-storage-repository.md)**: `TransactionDto` contract, `_apply_limit` type guarding, `BaseRepository` query seams, driver exception encapsulation, and null-safe iterators.
 - **[Vectorization & Processing Pipeline Specification](docs/specs/vectorization-processing-pipeline.md)**: `CollectionProcessor` batch lifecycle, fault-tolerant batch isolation, `VectorStore` port contracts, CLI flags, and summary reporting.
+- **[Verification Harness & Quality Gates Specification](docs/specs/verification-and-quality.md)**: 6-gate verification pipeline (`make verify`), linting standards (pylint 10.00/10), testing rigor, and documentation audit rules.
+
+---
+
+## Automated Verification Harness & Makefile
+
+This repository includes a centralized `Makefile` and verification script (`scripts/verify.sh`) matching the quality gates in `babylon_data_loader`:
+
+```bash
+# Run all 6 verification gates (formatting, linting, typing, tests, doc audit, secret scan)
+make verify
+# or
+./scripts/verify.sh
+
+# Run strict verification (fails if code changed without documentation updates)
+make verify-strict
+
+# Audit documentation, path privacy, and spec synchronization only
+make verify-docs
+```
+
+### Makefile Target Reference
+- `make verify`: Executes all 6 quality gates sequentially.
+- `make check-quality`: Runs `pylint` and `mypy` static type checking.
+- `make test`: Runs unit tests (`poetry run pytest tests/datalake/test_repository.py -v`).
+- `make test-all`: Runs the entire pytest suite across the repository.
+- `make fmt`: Auto-formats code with `black`.
+- `make verify-docs`: Audits path privacy, relative link integrity, and documentation currency.
+- `make clean`: Removes caches, coverage artifacts, and `.tox` directories.
 
 ---
 
@@ -143,3 +172,6 @@ Agents operating in `babylon_features` must strictly observe Babylon 2.0 global 
 5. **Strict Pull Request Merge Restriction**:
    - Agents must **NEVER** merge pull requests (`gh pr merge`, GitHub API merges, or direct branch merges into `main`) on the user's behalf without explicit, unambiguous permission.
    - Report the PR link, test verification, and hand off for human review.
+6. **Mandatory Verification & Documentation Update Gate**:
+   - Before completing tasks, opening PRs, or handing off work, agents **MUST** execute `make verify` (or `./scripts/verify.sh`).
+   - Every code modification in `features/` must be evaluated against the canonical specifications in `docs/specs/` and accompanied by appropriate documentation updates. Stale specifications are strictly prohibited.

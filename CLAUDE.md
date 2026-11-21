@@ -10,6 +10,7 @@ This quick-reference guide provides essential commands, architecture links, and 
 - **[Master Architecture Catalog](docs/specs/README.md)**: Architectural catalog, system sequence diagram, and cross-cutting invariants.
 - **[Datalake Storage & Repository Spec](docs/specs/datalake-storage-repository.md)**: `TransactionDto`, `_apply_limit` query limits, and `BaseRepository` contracts.
 - **[Vectorization & Processing Pipeline Spec](docs/specs/vectorization-processing-pipeline.md)**: `CollectionProcessor` lifecycle, chunking invariants, `VectorStore` port, and CLI specification.
+- **[Verification Harness & Quality Gates Spec](docs/specs/verification-and-quality.md)**: 6-gate verification pipeline, linting, testing, and documentation audit rules.
 - **[Agent Persona (Software Engineer)](docs/Agent.md)**: Prompt and expectations for feature pipeline engineering.
 - **[Agent Persona (DevOps)](docs/Agent-Devops.md)**: CI/CD workflows, packaging, and artifact publishing.
 
@@ -21,14 +22,15 @@ This quick-reference guide provides essential commands, architecture links, and 
 - **Install dependencies**: `poetry install`
 - **Activate poetry shell**: `poetry shell`
 
-### Testing & Quality Gates
-- **Run all unit tests**: `poetry run pytest tests`
+### Verification Harness & Quality Gates
+- **Run comprehensive verification (all 6 gates)**: `make verify` or `./scripts/verify.sh`
+- **Run verification in strict mode (fails on un-updated docs)**: `make verify-strict`
+- **Audit documentation & path privacy only**: `make verify-docs`
+- **Run all unit tests**: `make test` or `poetry run pytest tests`
 - **Run single test module**: `poetry run pytest tests/datalake/test_repository.py`
-- **Run single test case**: `poetry run pytest tests/datalake/test_repository.py -k test_get_by_id_success`
-- **Format code (in-place)**: `poetry run black features tests`
-- **Check formatting (dry-run)**: `poetry run black features tests --check --diff`
-- **Lint code**: `poetry run pylint --rc-file=.pylintrc features/`
-- **Type check**: `poetry run mypy features`
+- **Format code (in-place)**: `make fmt`
+- **Lint code (pylint 10.00/10 target)**: `make lint`
+- **Type check (mypy)**: `make typecheck`
 
 ### Tox Automation
 - **Run full test suite across environments**: `tox`

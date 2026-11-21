@@ -10,6 +10,7 @@ This catalog indexes the canonical architectural specifications for the feature 
 | :--- | :--- | :--- |
 | **[Datalake Storage & Repository Specification](./datalake-storage-repository.md)** | `features/datalake/`<br>`tests/datalake/` | Domain transfer objects (`TransactionDto`), query limit validation (`_apply_limit`), defensive repository query seams (`BaseRepository`, `TransactionRepository`), ObjectId validation boundaries, null-safe iterators, driver exception encapsulation. |
 | **[Vectorization & Processing Pipeline Specification](./vectorization-processing-pipeline.md)** | `features/processor.py`<br>`features/vectorstore/`<br>`features/rag/` | Batch chunking lifecycle (`CollectionProcessor`), recursive text splitting (`RecursiveCharacterTextSplitter`), multi-backend vector store abstraction (`ChromaVectorStore`, `QdrantVectorStore`), fault-tolerant document building, CLI vectorization harness (`poetry run vectorize`). |
+| **[Verification Harness & Local Quality Gates](./verification-and-quality.md)** | Quality Assurance & Gates | 6-gate verification harness (`make verify`, `./scripts/verify.sh`), PEP-8 formatting, Pylint (10.00/10), Mypy static typing, unit testing, documentation update audit, and Path Privacy gate. |
 
 ---
 
