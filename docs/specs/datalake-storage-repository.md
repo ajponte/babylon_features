@@ -2,7 +2,7 @@
 
 **Target Packages**: `features/datalake/`  
 **Architectural Role**: Persistence Domain Contracts & Datalake Repository Adapter Layer  
-**Document Status**: Canonical / Active Specification (Phase 1A)  
+**Document Status**: Canonical / Active Specification (Phase 1B)  
 **Primary Classes**: [`TransactionDto`](../../features/datalake/repository.py), [`BaseRepository`](../../features/datalake/repository.py), [`TransactionRepository`](../../features/datalake/repository.py), [`TransactionMapper`](../../features/datalake/repository.py)  
 **Parent Document**: [`docs/specs/README.md`](./README.md)  
 
@@ -164,6 +164,54 @@ def _apply_limit(cursor: Any, limit: int | None) -> Any:
 > [!IMPORTANT]
 > Because Python booleans inherit from `int` (`isinstance(True, int) == True`), the type guard explicitly evaluates `isinstance(limit, bool)` before validating integer type.
 
+### 4.2 Presence-Based Key Resolution: `_first_present`
+
+To bridge schema variations between canonical ingestion pipelines (`babylon_data_loader` writing camelCase) and legacy synthetic test sets (writing PascalCase), key lookup is managed via `_first_present`:
+
+```python
+def _first_present(doc: dict, *keys: str, default: Any = None) -> Any:
+    """Return doc[key] for the first key that exists and is not None; otherwise default."""
+    for key in keys:
+        if key in doc and doc[key] is not None:
+            return doc[key]
+    return default
+```
+
+**Key Invariant**: Field existence is strictly evaluated via `key in doc and doc[key] is not None`. Truthiness checks (`if doc.get(key)`) are prohibited to prevent numeric zero values (such as `amount: 0` or `0.0`) or empty strings from prematurely falling back to subsequent candidate keys.
+
+### 4.3 Type Coercion Pipeline: `coerce_date` & `coerce_amount`
+
+Data loader dialects produce diverse type representations for timestamps and monetary fields across statements. Pure module-level helpers normalize these representations into canonical domain types:
+
+#### 4.3.1 Date Coercion: `coerce_date`
+Coerces Python `datetime.datetime`, `datetime.date`, or formatted strings into a canonical `datetime.date`:
+1. `datetime.datetime` instances evaluate first (subclass of `date`) and extract `.date()`.
+2. `datetime.date` instances return unchanged.
+3. String inputs iterate through format trials: `default_format`, `"%Y-%m-%d"`, `"%m/%d/%Y"`, and `"%Y/%m/%d"`.
+4. ISO-8601 strings normalize `'Z'` to `'+00:00'` and parse via `datetime.fromisoformat(...)`.
+5. Non-matching strings, unsupported types, or `None` return `None` safely without leaking exceptions.
+
+#### 4.3.2 Monetary Amount Coercion: `coerce_amount`
+Normalizes numeric or currency-formatted strings into standard `float`:
+1. Booleans (`True`, `False`) explicitly raise `ValueError("Cannot coerce bool to float")` (preventing Python's `bool -> int` inheritance coercion).
+2. Integers and floats cast directly to `float(value)`.
+3. Strings strip currency symbols (`'$'`), commas (`','`), and boundary whitespace prior to `float(...)` parsing.
+4. Malformed strings and non-numeric types raise `ValueError`.
+
+### 4.4 Multi-Schema Key Resolution Rules Matrix
+
+The table below defines the multi-schema resolution order, default fallback, and type coercion strategy across incoming MongoDB document variants:
+
+| DTO Field | Target Domain Type | Mongo Resolution Order | Default / Fallback | Coercion Rule |
+| :--- | :--- | :--- | :--- | :--- |
+| `record_id` | `str` | `_id` | Required (no default) | `str(doc["_id"])` |
+| `amount` | `float` | `amount`, `Amount` | Required | `coerce_amount` |
+| `posting_date` | `datetime.date` | `postingDate`, `PostingDate` | Required | `coerce_date` |
+| `description` | `str` | `description`, `Description` | `""` (Required non-empty) | Passthrough; constructor validates non-empty |
+| `details` | `str` | `details`, `Details` | `""` | Passthrough; `None` normalized to `""` |
+| `tx_type` | `str` | `transactionType`, `type`, `Type` | `"UNKNOWN"` | Passthrough fallback |
+| `check_num` | `str \| None` | `checkOrSlipNum`, `CheckOrSlipNum`, `checkSlipNo`, `checkNumber` | `""` | Passthrough fallback |
+
 ---
 
 ## 5. Datalake Repository Architecture: `BaseRepository`
@@ -228,9 +276,9 @@ class TransactionRepository(BaseRepository):
 ### 6.2 `TransactionMapper`
 The `TransactionMapper` acts as the bidirectional converter between MongoDB BSON documents and `TransactionDto` domain objects:
 - `to_domain(doc: dict, date_string_format: str | None = "%m/%d/%Y") -> TransactionDto | None`:
-  Safely extracts `_id`, `Amount`, `PostingDate`, `Description`, `Details`, `Type`, and `CheckOrSlipNum`. Wraps parsing in a generic `try...except Exception:` block; any missing key or parse error logs and returns `None`, discarding corrupted records from pipeline consumption.
+  Executes resilient multi-schema normalization using `_first_present`, `coerce_date`, and `coerce_amount` per Section 4.4. Validates required domain fields (`id`, `posting_date`, `description`) through `TransactionDto`. All parsing and coercion failures are trapped in a fail-safe `except Exception:` block that returns `None`, shielding downstream feature vectorization from corrupted documents while properly mapping canonical Chase camelCase BSON records.
 - `to_document(transaction: TransactionDto, date_string_format: str | None = "%m/%d/%Y") -> dict`:
-  Serializes domain properties back into datalake dictionary format, casting `transaction.id` to `ObjectId` and formatting `posting_date` as a formatted string.
+  Maintains backward-compatible serialization parity, persisting domain properties into datalake dictionary format with PascalCase keys, casting `transaction.id` to `ObjectId` and formatting `posting_date` as a formatted string.
 
 ---
 
@@ -296,3 +344,11 @@ def mock_collection() -> MagicMock:
 | `test_repository_get_by_id_invalid_id_returns_none` | Malformed IDs: `""`, `"invalid-id"`, `"12345"`. | Asserts `find_one` never called and returns `None`. |
 | `test_repository_get_all_null_cursor` | Null cursor edge case. | Asserts safe return of empty list `[]` without throwing exception. |
 | `test_transaction_repository_get_all` | Corrupted raw document coexistence. | Asserts valid documents mapped, corrupted documents dropped. |
+| `test_transaction_mapper_camel_case_chase` | Canonical Chase document with camelCase keys and native BSON datetime. | Asserts successful mapping to valid `TransactionDto` domain object. |
+| `test_transaction_mapper_pascal_case_legacy` | Legacy synthetic document with PascalCase keys and string date. | Asserts backward-compatible mapping with unchanged field values. |
+| `test_transaction_mapper_date_coercion_matrix` | Date coercion matrix across datetime, date, ISO-8601, and US formats. | Asserts consistent parsing to canonical `datetime.date`, returns `None` on corrupt string. |
+| `test_transaction_mapper_amount_coercion` | Monetary coercion matrix across int, float, currency strings, and zero. | Asserts correct float values and confirms amount `0` is preserved without fallback. |
+| `test_transaction_mapper_missing_optional_fields` | Minimal document lacking details, check number, or type. | Asserts safe default application (`details=""`, `check_num=""`, `type="UNKNOWN"`). |
+| `test_transaction_mapper_invalid_record_returns_none` | Malformed documents (missing description, unparseable date, invalid amount). | Asserts fail-safe interception returning `None`. |
+| `test_coerce_amount_rejects_unsupported_type` | Type coercion perimeter defense (`None`, booleans, invalid strings, lists). | Asserts `ValueError` raised strictly guarding domain boundaries. |
+| `test_to_document_snapshot` | Serialization snapshot test for `to_document`. | Asserts backward compatibility of persisted dictionary structure. |

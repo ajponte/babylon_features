@@ -4,14 +4,14 @@
 Datalake records repository pattern
 """
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo.collection import Collection
 
 from features.error import RAGError
-from features.utils import convert_string_to_date, convert_date_to_string
+from features.utils import convert_date_to_string
 
 DEFAULT_DATE_STRING_FORMAT = "%m/%d/%Y"
 
@@ -155,6 +155,69 @@ class BaseRepository:
         return self._collection
 
 
+def _first_present(doc: dict, *keys: str, default: Any = None) -> Any:
+    """Return doc[key] for the first key that exists and is not None; otherwise default.
+
+    :param doc: Dictionary to search for keys.
+    :param keys: Ordered candidate keys to check.
+    :param default: Fallback value returned if no key is present with a non-None value.
+    :return: Value of first present, non-None key, or default.
+    """
+    for key in keys:
+        if key in doc and doc[key] is not None:
+            return doc[key]
+    return default
+
+
+def coerce_date(
+    value: Any, default_format: str = DEFAULT_DATE_STRING_FORMAT
+) -> date | None:
+    """Coerce datetime, date, or a formatted string to datetime.date. None if unparseable.
+
+    :param value: Input date value (datetime, date, str, or unsupported type).
+    :param default_format: Primary strptime format pattern for string dates.
+    :return: Parsed datetime.date object, or None on failure or unsupported type.
+    """
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        formats = (default_format, "%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d")
+        for fmt in formats:
+            try:
+                return datetime.strptime(value, fmt).date()
+            except (ValueError, TypeError):
+                continue
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def coerce_amount(value: Any) -> float:
+    """Coerce int, float, or currency string like '$1,234.56' to float.
+
+    Raises ValueError otherwise.
+
+    :param value: Input amount value.
+    :return: Float representation of the amount.
+    :raise ValueError: If the value cannot be coerced to float or is a bool.
+    """
+    if isinstance(value, bool):
+        raise ValueError("Cannot coerce bool to float")
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        cleaned = value.replace("$", "").replace(",", "").strip()
+        try:
+            return float(cleaned)
+        except ValueError as err:
+            raise ValueError(f"Cannot coerce string '{value}' to float") from err
+    raise ValueError(f"Cannot coerce {type(value).__name__} to float")
+
+
 class TransactionMapper:
     """Holds static methods for document conversion."""
 
@@ -164,18 +227,32 @@ class TransactionMapper:
     ) -> TransactionDto | None:
         """Convert a mongo doc, represented by key/value pairs, into a transaction DTO."""
         try:
+            fmt = date_string_format or DEFAULT_DATE_STRING_FORMAT
+            posting_date = coerce_date(
+                _first_present(doc, "postingDate", "PostingDate"),
+                default_format=fmt,
+            )
+            if posting_date is None:
+                return None
             return TransactionDto(
                 record_id=str(doc["_id"]),
-                amount=doc["Amount"],
-                posting_date=convert_string_to_date(
-                    date_string=doc["PostingDate"],  # type: ignore
-                    format_string=date_string_format,  # type: ignore
+                amount=coerce_amount(_first_present(doc, "amount", "Amount")),
+                posting_date=posting_date,
+                description=_first_present(
+                    doc, "description", "Description", default=""
                 ),
-                description=doc["Description"],
-                details=doc["Details"],
-                tx_type=doc["Type"],
-                # Optional
-                check_num=doc.get("CheckOrSlipNum", None),
+                details=_first_present(doc, "details", "Details", default=""),
+                tx_type=_first_present(
+                    doc, "transactionType", "type", "Type", default="UNKNOWN"
+                ),
+                check_num=_first_present(
+                    doc,
+                    "checkOrSlipNum",
+                    "CheckOrSlipNum",
+                    "checkSlipNo",
+                    "checkNumber",
+                    default="",
+                ),
             )
         except Exception:
             # Skip invalid records.

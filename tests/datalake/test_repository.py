@@ -3,7 +3,7 @@
 Unit tests for datalake repository and TransactionDto.
 """
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from unittest.mock import MagicMock
 from bson import ObjectId
@@ -12,8 +12,11 @@ import pytest
 from features.datalake.repository import (
     BaseRepository,
     TransactionDto,
+    TransactionMapper,
     TransactionRepository,
     _apply_limit,
+    coerce_amount,
+    coerce_date,
 )
 from features.error import RAGError
 
@@ -339,3 +342,186 @@ def test_repository_get_by_id_invalid_id_returns_none(
 
     assert result is None
     mock_collection.find_one.assert_not_called()
+
+
+def test_transaction_mapper_camel_case_chase() -> None:
+    """Verify canonical Chase doc with datetime postingDate and camelCase keys maps to valid DTO."""
+    doc = {
+        "_id": ObjectId(VALID_OBJECT_ID),
+        "amount": 42.50,
+        "postingDate": datetime(2025, 10, 22, 14, 0),
+        "description": "Supermarket Store #42",
+        "details": "grocery purchase",
+        "transactionType": "DEBIT",
+        "checkOrSlipNum": "001",
+    }
+    dto = TransactionMapper.to_domain(doc)
+
+    assert dto is not None
+    assert dto.id == VALID_OBJECT_ID
+    assert dto.amount == 42.50
+    assert dto.posting_date == date(2025, 10, 22)
+    assert dto.description == "Supermarket Store #42"
+    assert dto.details == "grocery purchase"
+    assert dto.transaction_type == "DEBIT"
+    assert dto.check_num == "001"
+
+
+def test_transaction_mapper_pascal_case_legacy() -> None:
+    """Verify legacy doc with string MM/DD/YYYY PostingDate and PascalCase keys maps identically."""
+    doc = new_raw_doc()
+    dto = TransactionMapper.to_domain(doc)
+
+    assert dto is not None
+    assert dto.id == VALID_OBJECT_ID
+    assert dto.amount == 42.50
+    assert dto.posting_date == date(2023, 1, 15)
+    assert dto.description == "Supermarket Store #42"
+    assert dto.details == "grocery purchase"
+    assert dto.transaction_type == "DEBIT"
+    assert dto.check_num == "001"
+
+
+@pytest.mark.parametrize(
+    ("date_input", "expected_date"),
+    [
+        (datetime(2025, 10, 22, 14, 0), date(2025, 10, 22)),
+        (date(2025, 10, 22), date(2025, 10, 22)),
+        ("2025-10-22", date(2025, 10, 22)),
+        ("10/22/2025", date(2025, 10, 22)),
+        ("2025-10-22T14:00:00Z", date(2025, 10, 22)),
+        ("unparseable-date", None),
+    ],
+)
+def test_transaction_mapper_date_coercion_matrix(
+    date_input: Any, expected_date: date | None
+) -> None:
+    """Verify date coercion matrix supports datetime, date, ISO string, US format, and rejects invalid strings."""
+    doc = new_raw_doc(PostingDate=date_input)
+    dto = TransactionMapper.to_domain(doc)
+
+    if expected_date is None:
+        assert dto is None
+    else:
+        assert dto is not None
+        assert dto.posting_date == expected_date
+
+
+@pytest.mark.parametrize(
+    ("amount_input", "expected_amount"),
+    [
+        (42, 42.0),
+        (42.50, 42.5),
+        ("$1,234.56", 1234.56),
+        (0, 0.0),
+    ],
+)
+def test_transaction_mapper_amount_coercion(
+    amount_input: Any, expected_amount: float
+) -> None:
+    """Verify amount coercion handles int, float, currency strings, and zero without fallback."""
+    doc = new_raw_doc(Amount=amount_input)
+    dto = TransactionMapper.to_domain(doc)
+
+    assert dto is not None
+    assert dto.amount == expected_amount
+
+
+def test_transaction_mapper_missing_optional_fields() -> None:
+    """Verify doc without details, checkOrSlipNum, or transactionType maps with safe defaults."""
+    doc = {
+        "_id": ObjectId(VALID_OBJECT_ID),
+        "amount": 50.0,
+        "postingDate": date(2025, 5, 1),
+        "description": "Minimal Transaction",
+    }
+    dto = TransactionMapper.to_domain(doc)
+
+    assert dto is not None
+    assert dto.id == VALID_OBJECT_ID
+    assert dto.amount == 50.0
+    assert dto.posting_date == date(2025, 5, 1)
+    assert dto.description == "Minimal Transaction"
+    assert dto.details == ""
+    assert dto.transaction_type == "UNKNOWN"
+    assert dto.check_num == ""
+
+
+@pytest.mark.parametrize(
+    "corrupt_doc",
+    [
+        {"_id": ObjectId(VALID_OBJECT_ID), "Amount": 10.0, "PostingDate": "01/15/2023"},
+        {
+            "_id": ObjectId(VALID_OBJECT_ID),
+            "Amount": 10.0,
+            "PostingDate": "01/15/2023",
+            "Description": "",
+        },
+        {
+            "_id": ObjectId(VALID_OBJECT_ID),
+            "Amount": 10.0,
+            "PostingDate": "unparseable-date",
+            "Description": "Test",
+        },
+        {
+            "_id": ObjectId(VALID_OBJECT_ID),
+            "Amount": "not-an-amount",
+            "PostingDate": "01/15/2023",
+            "Description": "Test",
+        },
+        {
+            "_id": ObjectId(VALID_OBJECT_ID),
+            "Amount": True,
+            "PostingDate": "01/15/2023",
+            "Description": "Test",
+        },
+    ],
+)
+def test_transaction_mapper_invalid_record_returns_none(
+    corrupt_doc: dict[str, Any],
+) -> None:
+    """Verify mapper returns None for missing description, unparseable date, or invalid amount."""
+    assert TransactionMapper.to_domain(corrupt_doc) is None
+
+
+@pytest.mark.parametrize(
+    "invalid_value",
+    [
+        None,
+        True,
+        False,
+        "not-a-number",
+        "$not-a-number",
+        "",
+        [],
+    ],
+)
+def test_coerce_amount_rejects_unsupported_type(invalid_value: Any) -> None:
+    """Verify coerce_amount raises ValueError for None, booleans, and invalid strings."""
+    with pytest.raises(ValueError):
+        coerce_amount(invalid_value)
+
+
+def test_to_document_snapshot() -> None:
+    """Verify to_document output remains strictly backward-compatible with legacy schema."""
+    dto = new_valid_dto(
+        record_id=VALID_OBJECT_ID,
+        amount=42.50,
+        posting_date=date(2023, 1, 15),
+        description="Supermarket Store #42",
+        details="grocery purchase",
+        tx_type="DEBIT",
+        check_num="001",
+    )
+    doc = TransactionMapper.to_document(dto)
+
+    expected = {
+        "_id": ObjectId(VALID_OBJECT_ID),
+        "Amount": 42.50,
+        "PostingDate": "01/15/2023",
+        "Description": "Supermarket Store #42",
+        "Details": "grocery purchase",
+        "Type": "DEBIT",
+        "CheckOrSlipNum": "001",
+    }
+    assert doc == expected
