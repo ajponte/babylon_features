@@ -258,53 +258,54 @@ For operations, debugging, and backfilling, the features pipeline provides a com
 ```bash
 poetry run vectorize [OPTIONS]
 ```
-*(Or directly via module execution: `python -m features.tools.run [OPTIONS]`)*
+*(Configured via `[tool.poetry.scripts]` in `pyproject.toml` pointing to `features.tools.vectorize:main`)*
 
 ### 6.2 Command Options & Parameters
 
-| Flag | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `--collection <name>` | `str` | `""` (all) | Target a single MongoDB collection name. When omitted, discovers and processes all collections matching `DATALAKE_COLLECTION_PREFIX`. |
-| `--limit <n>` | `int` | `None` | Restrict extraction to the first `n` transactions per collection. Guarded by `_apply_limit` type checks. |
-| `--vector-db <type>` | `str` | `config` value | Select vector persistence backend (`chroma` or `qdrant`). Overrides `VECTOR_DB_TYPE` environment setting. |
-| `--dry-run` | `flag` | `False` | Execute discovery, extraction, document building, and chunking without calling `add_documents` on the vector database. |
-| `--log-level <lvl>` | `str` | `INFO` | Console logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
+| Flag | Short | Type | Default | Description |
+| :--- | :---: | :--- | :--- | :--- |
+| `--collection` | `-c` | `str` | `"all"` | Target collection name (`transactions_chase`, `transactions_synthetic`) or `"all"` for all configured collections. |
+| `--limit` | `-l` | `int` (min=1) | `None` | Maximum number of records to fetch per collection. |
+| `--vector-db` | `-v` | `choice(chroma, qdrant)` | `"chroma"` | Target vector database persistence backend. |
+| `--dry-run` | | `flag` | `False` | Execute discovery, extraction, and chunking without calling `add_documents` on the vector database (P2-D4). |
+| `--chunk-size` | | `int` (min=1) | `1000` | Maximum characters per chunk. Must be strictly positive. |
+| `--chunk-overlap` | | `int` (min=0) | `100` | Character overlap between consecutive chunks. Must satisfy `0 <= chunk_overlap < chunk_size` (P2-D5). |
 
 ### 6.3 Telemetry & Summary Console Reporting
-Upon completion of a vectorization run, the CLI outputs a structured summary table:
+Upon completion of a vectorization run, the CLI outputs a structured summary table via `VectorizeSummary.render()`:
 
 ```text
-======================================================================
-                   VECTORIZATION EXECUTION SUMMARY
-======================================================================
-Execution Mode:         DRY RUN / MUTATING
-Vector Database:        Qdrant (localhost:6333, collection: babylon_vectors)
-Embedding Model:        BAAI/bge-small-en-v1.5
-Collections Scanned:    3 (transactions_chase, transactions_fidelity, ...)
-Transactions Extracted: 450
-Documents Chunked:      448
-Failed / Dropped:       2 (logged in debug trace)
-Total Chunks Emitted:   512
-Time Elapsed:           4.82s
-Throughput:             106.2 chunks/sec
-======================================================================
+============================================================
+Vectorization Execution Summary
+============================================================
+Target Collection(s) : transactions_chase
+Record Limit Applied : 25
+Documents Fetched    : 25
+Chunks Generated     : 32
+Vector Store Backend : ChromaDB (Persistent)
+Dry Run Mode         : False (Persisted successfully)
+Elapsed Time         : 1.42s
+============================================================
 ```
+
+In dry-run mode, the `Dry Run Mode` field reflects `True (No writes performed)`, verifying that no mutations occurred in vector storage backends.
 
 ---
 
 ## 7. Verification Standards & Quality Gates
 
-Authoritative test reference: [`tests/test_processor.py`](../../tests/test_processor.py).
+Authoritative test references: [`tests/test_processor.py`](../../tests/test_processor.py) and [`tests/tools/test_vectorize.py`](../../tests/tools/test_vectorize.py).
 
 ### 7.1 Test Strategy & Mocks
 Unit tests enforce 100% hermetic isolation from live databases and GPU hardware:
 1. **Repository Mocks**: `BaseRepository` / `TransactionRepository` are mocked to return canned lists of `TransactionDto` instances.
 2. **Splitter & Builder Mocks**: Unit tests patch `build_langchain_document` and `RecursiveCharacterTextSplitter` to verify chunk routing and batch accumulation.
-3. **Fault-Domain Assertion**: Tests verify that when `build_langchain_document` raises an exception for record 1, record 2 is still successfully processed and delivered to `VectorStore.add_documents`.
+3. **CLI Test Harness**: `CliRunner` tests patch `resolve_repositories` and `build_store` in `features.tools.vectorize` to verify CLI command options, parameter validation, and telemetry rendering without network or disk side effects.
+4. **Fault-Domain Assertion**: Tests verify that when `build_langchain_document` raises an exception for record 1, record 2 is still successfully processed and delivered to `VectorStore.add_documents`.
 
 ### 7.2 Quality Gates
-- **Zero Live Connection Requirement**: Tests in `tests/test_processor.py` execute without live MongoDB, ChromaDB, or Qdrant connections.
-- **Branch Coverage**: `features/processor.py` maintains >= 90% statement and branch coverage in CI workflows.
+- **Zero Live Connection Requirement**: Tests in `tests/test_processor.py` and `tests/tools/test_vectorize.py` execute without live MongoDB, ChromaDB, or Qdrant connections.
+- **Branch Coverage**: `features/processor.py` and `features/tools/vectorize.py` maintain >= 90% statement and branch coverage in CI workflows.
 
 ### 7.3 Quality Assurance Matrix
 
@@ -329,3 +330,13 @@ Unit tests enforce 100% hermetic isolation from live databases and GPU hardware:
 | `test_chunk_transactions_text_overlap_continuity` | Semantic overlap continuity. | Verifies consecutive split chunks share tokens across split boundaries. |
 | `test_chunk_transactions_sparse_dto` | Sparse DTO processing. | Verifies records with minimal/sparse fields chunk successfully without error. |
 | `test_chunk_transactions_empty_input` | Boundary condition on empty iterable. | Verifies empty iterable returns `[]`. |
+| `test_vectorize_help` | CLI documentation and option discovery. | Verifies `--help` exits 0 and lists all 6 configurable options. |
+| `test_vectorize_dry_run_success` | Dry-run isolation. | Verifies chunking executes and outputs telemetry while skipping store writes (P2-D4). |
+| `test_vectorize_persists_to_chroma` | Chroma vector persistence routing. | Verifies `--vector-db chroma` routes chunks to `ChromaVectorStore.add_documents`. |
+| `test_vectorize_persists_to_qdrant` | Qdrant vector persistence routing. | Verifies `--vector-db qdrant` routes chunks to `QdrantVectorStore.add_documents`. |
+| `test_vectorize_with_limit` | Query limit forwarding. | Verifies `--limit` is passed directly to the repository query filter. |
+| `test_vectorize_single_collection` | Explicit collection routing. | Verifies specifying a single collection targets only the requested repository. |
+| `test_vectorize_invalid_collection` | Unknown collection error handling. | Verifies invalid collection names exit non-zero and list valid collections. |
+| `test_vectorize_custom_chunking` | Custom splitter parameter passing. | Verifies `--chunk-size` and `--chunk-overlap` reach `chunk_transactions`. |
+| `test_vectorize_overlap_not_less_than_size` | Splitter overlap boundary invariants. | Verifies `chunk_overlap >= chunk_size` raises `BadParameter` error (P2-D5). |
+| `test_vectorize_empty_collection` | Empty collection edge case. | Verifies 0 documents fetched produces 0 chunks and exits 0 without store writes. |
