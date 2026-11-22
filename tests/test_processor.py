@@ -69,6 +69,15 @@ def test_collection_processor_batch_number(mock_vector_store: MagicMock) -> None
     assert processor.batch_number == 2
 
 
+def test_collection_processor_rejects_none_repository(
+    mock_vector_store: MagicMock,
+) -> None:
+    """Verify CollectionProcessor.process raises TypeError when repository is None."""
+    processor = CollectionProcessor(mock_vector_store)
+    with pytest.raises(TypeError, match="mongo_repository cannot be None"):
+        processor.process(None)  # type: ignore[arg-type]
+
+
 @patch("features.processor.build_langchain_document")
 @patch("features.processor.RecursiveCharacterTextSplitter")
 def test_collection_processor_process_success(
