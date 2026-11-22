@@ -169,18 +169,40 @@ content = (
 3. **Primitive Cast Invariant**: Non-serializable objects (such as BSON `ObjectId`) are explicitly cast to string via `str(v)`.
 4. **Pruning**: Keys with `None` values are stripped from the final dictionary.
 
-### 4.3 Recursive Text Chunking Configuration
+### 4.3 Recursive Text Chunking Configuration & Pure Helper: `chunk_transactions`
+Document splitting is encapsulated in a pure, reusable module function `chunk_transactions`:
+
+```python
+def chunk_transactions(
+    transactions: Iterable[TransactionDto],
+    collection_name: str,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 100,
+) -> list[Document]:
+    """Build and split one LangChain document per transaction.
+
+    Records that fail to build or split are logged at info level and skipped (P2-D3).
+
+    :param transactions: An iterable of TransactionDto records.
+    :param collection_name: Collection name stored in document metadata.
+    :param chunk_size: Maximum characters per chunk (default 1000).
+    :param chunk_overlap: Character overlap between chunks (default 100).
+    :return: List of chunked LangChain Document objects.
+    """
+```
+
 Documents are partitioned using `RecursiveCharacterTextSplitter` configured with standard parameters:
 ```python
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,
-    chunk_overlap=100,
+    chunk_size=chunk_size,
+    chunk_overlap=chunk_overlap,
     add_start_index=True,
 )
 ```
-- `chunk_size = 1000`: Ensures semantic units fit comfortably within the 512-token context window of `bge-small-en-v1.5`.
-- `chunk_overlap = 100`: Preserves continuity across segment boundaries.
+- `chunk_size = 1000` (default): Ensures semantic units fit comfortably within the 512-token context window of `bge-small-en-v1.5`.
+- `chunk_overlap = 100` (default): Preserves continuity across segment boundaries.
 - `add_start_index = True`: Captures character offset positions within source document text for lineage auditing.
+- **Fault-Tolerant Isolation**: Any exception raised during document building or chunk splitting for a specific record is caught, logged with the record's ID, and skipped without terminating the batch.
 
 ---
 
@@ -195,27 +217,7 @@ class CollectionProcessor(DataLakeProcessor):
         collection_name = mongo_repository.collection.name
         transactions = mongo_repository.get_by_filter({})
 
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=100,
-            add_start_index=True,
-        )
-
-        all_chunks: list[Document] = []
-        for transaction in transactions:
-            try:
-                doc = build_langchain_document(
-                    source=transaction, collection=collection_name
-                )
-                chunks = text_splitter.split_documents([doc])
-                all_chunks.extend(chunks)
-            except Exception as e:
-                _LOGGER.info(
-                    f"Error while building/chunking langchain document "
-                    f"for record {transaction.id}"
-                )
-                _LOGGER.debug(f"Error: {e}")
-                continue
+        all_chunks = chunk_transactions(transactions, collection_name)
 
         if all_chunks:
             _LOGGER.info(f"Adding {len(all_chunks)} chunks to vector store")
@@ -286,3 +288,17 @@ Unit tests enforce 100% hermetic isolation from live databases and GPU hardware:
 ### 7.2 Quality Gates
 - **Zero Live Connection Requirement**: Tests in `tests/test_processor.py` execute without live MongoDB, ChromaDB, or Qdrant connections.
 - **Branch Coverage**: `features/processor.py` maintains >= 90% statement and branch coverage in CI workflows.
+
+### 7.3 Quality Assurance Matrix
+
+| Test Method | Scenarios Covered | Invariant Verification |
+| :--- | :--- | :--- |
+| `test_collection_processor_batch_number` | Batch counter incrementation. | Verifies `batch_number` increments by 1 per `process` invocation. |
+| `test_collection_processor_process_success` | Full pipeline execution with mocks. | Verifies document building, chunk splitting, and vector store addition. |
+| `test_collection_processor_process_skip_error` | Fault isolation on corrupt records. | Verifies exceptions on individual records are logged and skipped while valid records proceed. |
+| `test_collection_processor_no_docs` | Empty datalake collection. | Verifies empty transaction lists do not invoke `add_documents`. |
+| `test_process_default_chunking_unchanged` | Regression parity with default chunking. | Verifies default `chunk_size=1000` and `chunk_overlap=100` are applied by `CollectionProcessor`. |
+| `test_chunk_transactions_honors_size_and_overlap` | Custom chunk size and overlap boundaries. | Verifies custom parameters (500/50) constrain chunk text lengths. |
+| `test_chunk_transactions_adds_start_index` | Chunk metadata enrichment. | Verifies integer `start_index` is present in each chunk's metadata. |
+| `test_chunk_transactions_skips_failing_record` | Pure helper exception boundary. | Verifies corrupt record skipping in `chunk_transactions` standalone. |
+| `test_chunk_transactions_empty_input` | Boundary condition on empty iterable. | Verifies empty iterable returns `[]`. |

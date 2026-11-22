@@ -1,11 +1,12 @@
 """Process data lake records."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from features.datalake.repository import BaseRepository
+from features.datalake.repository import BaseRepository, TransactionDto
 from features.logger import get_logger
 from features.rag.documents.document_builder import build_langchain_document
 from features.vectorstore.vectorstore import VectorStore
@@ -47,6 +48,49 @@ class DataLakeProcessor(ABC):
         return self._batch_number
 
 
+def chunk_transactions(
+    transactions: Iterable[TransactionDto],
+    collection_name: str,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 100,
+) -> list[Document]:
+    """Build and split one LangChain document per transaction.
+
+    Records that fail to build or split are logged at info level and skipped (P2-D3).
+
+    :param transactions: An iterable of TransactionDto records.
+    :param collection_name: Collection name stored in document metadata.
+    :param chunk_size: Maximum characters per chunk (default 1000).
+    :param chunk_overlap: Character overlap between chunks (default 100).
+    :return: List of chunked LangChain Document objects.
+    """
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        add_start_index=True,
+    )
+
+    all_chunks: list[Document] = []
+    for transaction in transactions:
+        try:
+            doc = build_langchain_document(
+                source=transaction, collection=collection_name
+            )
+            chunks = text_splitter.split_documents([doc])
+            all_chunks.extend(chunks)
+        except Exception as e:
+            record_id = getattr(transaction, "id", "unknown")
+            message = (
+                f"Error while building/chunking langchain document "
+                f"for record {record_id}"
+            )
+            _LOGGER.info(message)
+            _LOGGER.debug(f"Error: {e}")
+            continue
+
+    return all_chunks
+
+
 class CollectionProcessor(DataLakeProcessor):
     """
     A processor will consume records from a collection in the data lake
@@ -64,31 +108,7 @@ class CollectionProcessor(DataLakeProcessor):
         collection_name = mongo_repository.collection.name
         transactions = mongo_repository.get_by_filter({})
 
-        # Initialize text splitter for chunking.
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=100,
-            add_start_index=True,
-        )
-
-        # The langchain docs we want to vectorize.
-        all_chunks: list[Document] = []
-        for transaction in transactions:
-            try:
-                doc = build_langchain_document(
-                    source=transaction, collection=collection_name
-                )
-                # Split the document into chunks.
-                chunks = text_splitter.split_documents([doc])
-                all_chunks.extend(chunks)
-            except Exception as e:
-                message = (
-                    f"Error while building/chunking langchain document "
-                    f"for record {transaction.id}"
-                )
-                _LOGGER.info(message)
-                _LOGGER.debug(f"Error: {e}")
-                continue
+        all_chunks = chunk_transactions(transactions, collection_name)
 
         if all_chunks:
             _LOGGER.info(f"Adding {len(all_chunks)} chunks to vector store")
