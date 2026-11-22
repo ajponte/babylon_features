@@ -29,7 +29,8 @@ jobs:
 
       - name: Run Artifact Upload Script
         env:
-          BABYLON_API_GITHUB_PAT_TOKEN: ${{ secrets.BABYLON_PAT_CI }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BABYLON_API_GITHUB_PAT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # The script will run tox -e dist and upload to GitHub Releases
           python artifact_upload.py --repo ${{ github.repository }} --tag ${{ github.ref }}
