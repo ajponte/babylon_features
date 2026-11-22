@@ -104,7 +104,14 @@ fi
 # ------------------------------------------------------------------------------
 if [ "$DOCS_ONLY" = false ]; then
     info "Gate 4: Executing unit test suite via pytest..."
-    if poetry run pytest tests/datalake/test_repository.py -v; then
+    PYTEST_TARGETS="tests/datalake/test_repository.py"
+    if [ -f "tests/test_processor.py" ]; then
+        PYTEST_TARGETS="$PYTEST_TARGETS tests/test_processor.py"
+    fi
+    if [ -d "tests/tools" ]; then
+        PYTEST_TARGETS="$PYTEST_TARGETS tests/tools"
+    fi
+    if poetry run pytest $PYTEST_TARGETS -v; then
         pass "Unit test suite passed."
     else
         fail "Unit tests failed."
