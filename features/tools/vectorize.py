@@ -70,7 +70,8 @@ class VectorizeSummary:
 def resolve_collections(name: str) -> list[str]:
     """Resolve target collection names.
 
-    'all' returns COLLECTIONS. A known name returns [name].
+    'all' (case-insensitive) returns COLLECTIONS. Known collection names
+    are case-sensitive matching MongoDB collection namespaces.
     Anything else raises ValueError.
 
     :param name: Specified collection name or 'all'.
@@ -90,21 +91,31 @@ def resolve_collections(name: str) -> list[str]:
 def resolve_repositories(
     collection_names: list[str],
 ) -> list[tuple[str, TransactionRepository]]:
-    """Build a TransactionRepository per collection.
+    """Build a TransactionRepository per collection with environment fallbacks.
 
     :param collection_names: List of datalake collection names.
     :return: List of (collection_name, TransactionRepository) pairs.
     """
-    cfg: dict[str, Any] = {}
+    cfg: dict[str, Any] = {
+        "MONGO_DATA_LAKE_NAME": os.environ.get("MONGO_DATA_LAKE_NAME", "datalake"),
+        "MONGO_DB_HOST": os.environ.get("MONGO_DB_HOST", "localhost"),
+        "MONGO_DB_PORT": int(os.environ.get("MONGO_DB_PORT", "27017")),
+        "MONGO_DB_USER": os.environ.get("MONGO_DB_USER", "babylon"),
+        "MONGO_DB_PASSWORD": os.environ.get("MONGO_DB_PASSWORD", "babylonpass"),
+        "MONGO_CONNECTION_TIMEOUT_SECONDS": int(
+            os.environ.get("MONGO_CONNECTION_TIMEOUT_SECONDS", "30")
+        ),
+    }
+    if "MONGO_URI" in os.environ:
+        cfg["MONGO_URI"] = os.environ["MONGO_URI"]
+
     try:
         update_config_from_environment(cfg)
     except Exception as err:
         _LOGGER.debug("Failed loading environment config: %s", err)
 
-    db_name = cfg.get("MONGO_DATA_LAKE_NAME") or os.environ.get(
-        "MONGO_DATA_LAKE_NAME", "datalake"
-    )
-    client = MongoClientFactory.get_client(config=cfg) if cfg else None
+    db_name = cfg.get("MONGO_DATA_LAKE_NAME", "datalake")
+    client = MongoClientFactory.get_client(config=cfg)
 
     repositories: list[tuple[str, TransactionRepository]] = []
     for name in collection_names:
@@ -150,14 +161,22 @@ def validate_chunking(chunk_size: int, chunk_overlap: int) -> None:
     :param chunk_overlap: Overlapping character count.
     :raises click.BadParameter: If parameters violate chunking boundaries.
     """
-    if chunk_size <= 0:
+    if (
+        isinstance(chunk_size, bool)
+        or not isinstance(chunk_size, int)
+        or chunk_size <= 0
+    ):
         raise click.BadParameter(
-            f"chunk_size must be positive, got {chunk_size}",
+            f"chunk_size must be a positive integer, got {chunk_size}",
             param_hint="--chunk-size",
         )
-    if chunk_overlap < 0:
+    if (
+        isinstance(chunk_overlap, bool)
+        or not isinstance(chunk_overlap, int)
+        or chunk_overlap < 0
+    ):
         raise click.BadParameter(
-            f"chunk_overlap must be non-negative, got {chunk_overlap}",
+            f"chunk_overlap must be a non-negative integer, got {chunk_overlap}",
             param_hint="--chunk-overlap",
         )
     if chunk_overlap >= chunk_size:
@@ -253,10 +272,17 @@ def main(
         raise click.BadParameter(str(err), param_hint="--collection") from err
 
     start_time = time.perf_counter()
-    repositories = resolve_repositories(collection_names)
-    total_fetched, all_chunks = _extract_and_chunk_repositories(
-        repositories, limit, chunk_size, chunk_overlap
-    )
+    try:
+        repositories = resolve_repositories(collection_names)
+        total_fetched, all_chunks = _extract_and_chunk_repositories(
+            repositories, limit, chunk_size, chunk_overlap
+        )
+    except click.ClickException:
+        raise
+    except Exception as err:
+        _LOGGER.error("Datalake extraction failed: %s", err, exc_info=True)
+        raise click.ClickException(f"Datalake extraction failed: {err}") from err
+
     _persist_chunks(vector_db, all_chunks, dry_run)
     elapsed = time.perf_counter() - start_time
 
